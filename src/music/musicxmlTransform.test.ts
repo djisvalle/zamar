@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 import { transposePitch, clefForName, transposeKeyFifths, transformMusicXml } from './musicxmlTransform';
+import { MUSIC_XML_VIEWER_HTML } from '../screens/live-stage/generated/musicXmlViewerHtml';
 
 describe('transposePitch', () => {
   it('shifts within an octave, sharp spelling', () => {
@@ -186,6 +187,31 @@ describe('transformMusicXml', () => {
     expect(laterClef.getElementsByTagName('line')[0].textContent).toBe('4');
   });
 
+  const LATE_CLEF_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><key><fifths>0</fifths></key></attributes>
+      <note><rest/><duration>4</duration></note>
+    </measure>
+    <measure number="2">
+      <attributes>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note><rest/><duration>4</duration></note>
+    </measure>
+  </part>
+</score-partwise>`;
+
+  it('falls back to the part\'s first clef when measure 1 declares none', () => {
+    const out = parse(transformMusicXml(LATE_CLEF_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'bass' }));
+    const clefs = Array.from(out.getElementsByTagName('clef'));
+    expect(clefs).toHaveLength(1);
+    expect(clefs[0].getElementsByTagName('sign')[0].textContent).toBe('F');
+    expect(clefs[0].getElementsByTagName('line')[0].textContent).toBe('4');
+  });
+
   it('throws on malformed XML', () => {
     expect(() => transformMusicXml('<not-valid', { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble' })).toThrow();
   });
@@ -202,5 +228,83 @@ describe('transformMusicXml', () => {
     expect(() => transformMusicXml(noParts, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble' })).toThrow(
       'part',
     );
+  });
+});
+
+/**
+ * These tests EXECUTE the checked-in generated WebView bundle rather than
+ * inspecting it as text. A previous bug -- TypeScript emitting `exports.foo =
+ * foo` under `module: None`, which throws `ReferenceError: exports is not
+ * defined` inside a plain <script> tag -- survived several text-only reviews
+ * precisely because nobody ever ran the emitted code. Running it also catches
+ * the generated file going stale relative to musicxmlTransform.ts.
+ */
+describe('generated MusicXML WebView bundle', () => {
+  // The generator emits exactly one script tag of the form
+  // `<script>(function(){...}\nwindow.transformMusicXml = transformMusicXml;})();</script>`.
+  function extractTransformScript(html: string): string {
+    const tail = 'window.transformMusicXml = transformMusicXml;})();</script>';
+    const tailIdx = html.indexOf(tail);
+    if (tailIdx === -1) throw new Error('transform script block not found in the generated bundle');
+    const head = '<script>(function(){';
+    const headIdx = html.lastIndexOf(head, tailIdx);
+    if (headIdx === -1) throw new Error('transform script opening tag not found in the generated bundle');
+    return html.slice(headIdx + '<script>'.length, tailIdx + tail.length - '</script>'.length);
+  }
+
+  function evalBundleTransform() {
+    const w = window as unknown as Record<string, unknown>;
+    delete w.transformMusicXml;
+    // Indirect eval so the script runs in the jsdom global scope, the same way
+    // a real <script> tag would (DOMParser/XMLSerializer/window all resolve).
+    // eslint-disable-next-line no-eval
+    (0, eval)(extractTransformScript(MUSIC_XML_VIEWER_HTML));
+    return w.transformMusicXml as (xml: string, opts: unknown) => string;
+  }
+
+  it('runs without throwing and assigns window.transformMusicXml', () => {
+    const fn = evalBundleTransform();
+    expect(typeof fn).toBe('function');
+  });
+
+  it('produces correctly transformed output when called from the bundle', () => {
+    const fn = evalBundleTransform();
+    const out = new DOMParser().parseFromString(
+      fn(SAMPLE_XML, { transposeSemi: 2, enharmonic: 'sharp', clef: 'alto' }),
+      'application/xml',
+    );
+
+    expect(out.getElementsByTagName('part')).toHaveLength(1);
+
+    const pitches = Array.from(out.getElementsByTagName('pitch'));
+    expect(pitches).toHaveLength(2);
+    expect(pitches[0].getElementsByTagName('step')[0].textContent).toBe('D');
+    expect(pitches[1].getElementsByTagName('step')[0].textContent).toBe('G');
+    expect(pitches[1].getElementsByTagName('alter')[0].textContent).toBe('1');
+
+    expect(out.getElementsByTagName('fifths')[0].textContent).toBe('3');
+
+    const clef = out.getElementsByTagName('clef')[0];
+    expect(clef.getElementsByTagName('sign')[0].textContent).toBe('C');
+    expect(clef.getElementsByTagName('line')[0].textContent).toBe('3');
+  });
+
+  it('is not stale: the bundle carries the late-clef fallback from source', () => {
+    const fn = evalBundleTransform();
+    const lateClef = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1"><note><rest/><duration>4</duration></note></measure>
+    <measure number="2"><attributes><clef><sign>G</sign><line>2</line></clef></attributes></measure>
+  </part>
+</score-partwise>`;
+    const out = new DOMParser().parseFromString(
+      fn(lateClef, { transposeSemi: 0, enharmonic: 'sharp', clef: 'bass' }),
+      'application/xml',
+    );
+    const clef = out.getElementsByTagName('clef')[0];
+    expect(clef.getElementsByTagName('sign')[0].textContent).toBe('F');
+    expect(clef.getElementsByTagName('line')[0].textContent).toBe('4');
   });
 });

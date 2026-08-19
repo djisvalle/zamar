@@ -48,7 +48,14 @@ function buildMusicXmlHtml() {
     '<div id="osmd-container"></div>',
     `<script>${fflateSrc}</script>`,
     `<script>${osmdSrc}</script>`,
-    `<script>(function(){${transformJs}\nwindow.transformMusicXml = transformMusicXml;})();</script>`,
+    // `var exports = {}` shims away the CommonJS-style `exports.foo = foo`
+    // lines TypeScript still emits even under `module: None`. Without it the
+    // first such line throws `ReferenceError: exports is not defined` in a
+    // plain <script> tag, aborting the tag before window.transformMusicXml is
+    // ever assigned. The function declarations themselves are emitted as
+    // ordinary top-level declarations inside this IIFE, so the final
+    // assignment still resolves against the local function.
+    `<script>(function(){var exports = {};\n${transformJs}\nwindow.transformMusicXml = transformMusicXml;})();</script>`,
     `<script>${driver}</script>`,
     '</body>',
     '</html>',

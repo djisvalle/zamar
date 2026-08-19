@@ -26,7 +26,11 @@ const BASE_URL = 'https://localhost';
 // refuse every navigation that isn't that document. (A blanket `false` would
 // also block iOS's initial load of the inline HTML itself.)
 function allowOnlyOwnDocument(request: { url: string }) {
-  return request.url === 'about:blank' || request.url.startsWith(BASE_URL);
+  // Exact origin or a path under it -- a bare `startsWith` would also accept
+  // lookalike hosts such as https://localhost.attacker.com/.
+  return (
+    request.url === 'about:blank' || request.url === BASE_URL || request.url.startsWith(BASE_URL + '/')
+  );
 }
 
 export function MusicXmlViewer({ fileUri, transposeSemi, clef, enharmonic }: MusicXmlViewerProps) {
@@ -38,6 +42,9 @@ export function MusicXmlViewer({ fileUri, transposeSemi, clef, enharmonic }: Mus
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // The web build renders the "not available on web" notice instead of the
+    // WebView, so reading the file there is pure waste.
+    if (Platform.OS === 'web') return;
     setError(null);
     setFileBase64(null);
     let cancelled = false;

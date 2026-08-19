@@ -156,13 +156,21 @@ export function transformMusicXml(xml: string, opts: TransformOptions): string {
   // Only the part's *initial* staff-1 clef is rewritten. Overwriting every
   // <clef> would flatten a grand staff's bass clef onto staff 1's sign and
   // destroy legitimate mid-score clef changes.
+  // A file is allowed to declare its clef in a later measure rather than the
+  // first, so when the strict search finds nothing, widen to the whole part --
+  // otherwise the Clef setting would be silently ignored for such a score.
+  // Staff 1 is still preferred while widening so a grand staff never gets its
+  // bass clef rewritten; only if the part has no staff-1 clef at all does the
+  // part's very first <clef> win.
+  const isStaffOne = (el: Element) => {
+    const n = el.getAttribute('number');
+    return n === null || n === '1';
+  };
   const { sign, line } = clefForName(opts.clef);
   const firstMeasure = firstPart.getElementsByTagName('measure')[0];
   const clefCandidates = firstMeasure ? Array.from(firstMeasure.getElementsByTagName('clef')) : [];
-  const clefEl = clefCandidates.find((el) => {
-    const n = el.getAttribute('number');
-    return n === null || n === '1';
-  });
+  const partClefs = Array.from(firstPart.getElementsByTagName('clef'));
+  const clefEl = clefCandidates.find(isStaffOne) || partClefs.find(isStaffOne) || partClefs[0];
   if (clefEl) {
     const signEl = clefEl.getElementsByTagName('sign')[0];
     const lineEl = clefEl.getElementsByTagName('line')[0];
