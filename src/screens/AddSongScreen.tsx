@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { SafeAreaView, StatusBar, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, StatusBar, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { fontHeading, radius } from '../theme/tokens';
 import { useStore } from '../data/store';
 import { SongSource } from '../data/types';
 import { noteName } from '../music/notes';
+import { pickAndCopySheetFile, PDF_MIME_TYPES, MUSICXML_MIME_TYPES } from '../data/importSheetFile';
 import { RootStackParamList } from '../navigation/types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -30,8 +31,29 @@ export function AddSongScreen({ route, navigation }: Props) {
   const [artist, setArtist] = useState('');
   const [keyIdx, setKeyIdx] = useState(0);
   const [chart, setChart] = useState('');
+  const [sheetFileUri, setSheetFileUri] = useState<string | null>(null);
+  const [sheetFileName, setSheetFileName] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
 
-  const canSave = title.trim().length > 0;
+  const fileReady = source === 'type' || Boolean(sheetFileUri);
+  const canSave = title.trim().length > 0 && fileReady;
+
+  async function handlePickFile() {
+    setPickError(null);
+    setPicking(true);
+    try {
+      const picked = await pickAndCopySheetFile(source === 'pdf' ? PDF_MIME_TYPES : MUSICXML_MIME_TYPES);
+      if (picked) {
+        setSheetFileUri(picked.uri);
+        setSheetFileName(picked.name);
+      }
+    } catch {
+      setPickError('Could not import that file. Please try again.');
+    } finally {
+      setPicking(false);
+    }
+  }
 
   function handleSave() {
     if (!canSave) return;
@@ -42,8 +64,8 @@ export function AddSongScreen({ route, navigation }: Props) {
         keyIdx,
         source,
         chart: source === 'type' ? chart : '',
-        sheetFileUri: null,
-        sheetFileName: null,
+        sheetFileUri: source === 'type' ? null : sheetFileUri,
+        sheetFileName: source === 'type' ? null : sheetFileName,
       },
       addToSetlist,
     );
@@ -84,7 +106,12 @@ export function AddSongScreen({ route, navigation }: Props) {
                 key={s.value}
                 variant={active ? 'primary' : 'secondary'}
                 fontSize={10}
-                onPress={() => setSource(s.value)}
+                onPress={() => {
+                  setSource(s.value);
+                  setSheetFileUri(null);
+                  setSheetFileName(null);
+                  setPickError(null);
+                }}
                 style={{ flex: 1, paddingVertical: 5, gap: 5 }}
               >
                 <SourceIcon value={s.value} color={active ? colors.accent : colors.text} />
@@ -130,10 +157,33 @@ export function AddSongScreen({ route, navigation }: Props) {
         </View>
 
         {source === 'pdf' && (
-          <Dropzone text="Drop a PDF here or tap to browse. Rendered as-is — annotation-only, no transposition." />
+          <Dropzone
+            text={
+              sheetFileName
+                ? `Selected: ${sheetFileName}`
+                : picking
+                ? 'Opening file browser…'
+                : 'Tap to choose a PDF. Rendered as-is — annotation-only, no transposition.'
+            }
+            onPress={handlePickFile}
+            disabled={picking}
+          />
         )}
         {source === 'musicxml' && (
-          <Dropzone text="Drop a .musicxml / .mxl file here. Fully transposable once imported." />
+          <Dropzone
+            text={
+              sheetFileName
+                ? `Selected: ${sheetFileName}`
+                : picking
+                ? 'Opening file browser…'
+                : 'Tap to choose a .musicxml / .mxl file. Fully transposable once imported.'
+            }
+            onPress={handlePickFile}
+            disabled={picking}
+          />
+        )}
+        {pickError && (source === 'pdf' || source === 'musicxml') && (
+          <Text style={{ fontSize: 12, color: colors.text, opacity: 0.75 }}>{pickError}</Text>
         )}
         {source === 'type' && (
           <Input
@@ -157,10 +207,11 @@ function SourceIcon({ value, color }: { value: SongSource; color: string }) {
   return <TypeInIcon size={12} color={color} />;
 }
 
-function Dropzone({ text }: { text: string }) {
+function Dropzone({ text, onPress, disabled }: { text: string; onPress?: () => void; disabled?: boolean }) {
   const { colors } = useTheme();
   return (
-    <View
+    <Pressable
+      onPress={disabled ? undefined : onPress}
       style={{
         borderWidth: 1,
         borderStyle: 'dashed',
@@ -169,10 +220,11 @@ function Dropzone({ text }: { text: string }) {
         padding: 24,
         alignItems: 'center',
         gap: 6,
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       <UploadIcon size={24} color={colors.text} strokeWidth={2} />
       <Text style={{ fontSize: 13, color: colors.text, opacity: 0.8, textAlign: 'center' }}>{text}</Text>
-    </View>
+    </Pressable>
   );
 }
