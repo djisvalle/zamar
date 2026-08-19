@@ -19,7 +19,14 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b069cd5a-79e4-4f14-865c-f91552c1dcb6"
+      }
+    },
+    "owner": "israelvalles-team"
   }
 }
