@@ -37,7 +37,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "generate:webview-bundles": "node scripts/generate-webview-bundles.js"
   },
   "jest": {
     "preset": "jest-expo"
