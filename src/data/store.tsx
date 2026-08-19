@@ -28,7 +28,7 @@ function slugify(title: string) {
   return `${base}-${Date.now().toString(36)}`;
 }
 
-function reducer(state: State, action: Action): State {
+export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'updateSong': {
       const song = state.songs[action.id];
@@ -46,6 +46,9 @@ function reducer(state: State, action: Action): State {
         meter: '4/4',
         source: action.input.source,
         chart: action.input.chart,
+        sheetFileUri: action.input.sheetFileUri,
+        sheetFileName: action.input.sheetFileName,
+        pdfAnnotations: {},
         transposeSemi: 0,
         capo: 0,
         clef: 'treble',

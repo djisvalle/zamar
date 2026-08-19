@@ -36,7 +36,15 @@ export function AddSongScreen({ route, navigation }: Props) {
   function handleSave() {
     if (!canSave) return;
     const id = store.addSong(
-      { title: title.trim(), artist: artist.trim(), keyIdx, source, chart: source === 'type' ? chart : '' },
+      {
+        title: title.trim(),
+        artist: artist.trim(),
+        keyIdx,
+        source,
+        chart: source === 'type' ? chart : '',
+        sheetFileUri: null,
+        sheetFileName: null,
+      },
       addToSetlist,
     );
     navigation.replace('LiveStage', { songId: id });
