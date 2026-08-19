@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { fontHeading } from '../../theme/tokens';
 import { Song } from '../../data/types';
@@ -29,34 +29,35 @@ export function SetlistDrawer({ visible, onClose, songs, onPressSong, onAddSong 
             backgroundColor: colors.surface,
             borderTopRightRadius: 16,
             borderBottomRightRadius: 16,
-            padding: 16,
-            gap: 10,
+            overflow: 'hidden',
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={[fontHeading, { fontSize: 16, color: colors.text }]}>Songs</Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <Button variant="secondary" icon size={34} accessibilityLabel="Add song to setlist" onPress={onAddSong}>
-                <PlusIcon size={16} color={colors.text} />
-              </Button>
-              <Button variant="ghost" icon size={34} accessibilityLabel="Close" onPress={onClose}>
-                <Text style={{ color: colors.accent, fontSize: 16 }}>✕</Text>
-              </Button>
+          <SafeAreaView style={{ flex: 1, padding: 16, gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={[fontHeading, { fontSize: 16, color: colors.text }]}>Songs</Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <Button variant="secondary" icon size={34} accessibilityLabel="Add song to setlist" onPress={onAddSong}>
+                  <PlusIcon size={16} color={colors.text} />
+                </Button>
+                <Button variant="ghost" icon size={34} accessibilityLabel="Close" onPress={onClose}>
+                  <Text style={{ color: colors.accent, fontSize: 16 }}>✕</Text>
+                </Button>
+              </View>
             </View>
-          </View>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 8 }} showsVerticalScrollIndicator={false}>
-            {songs.map((song) => (
-              <Pressable key={song.id} onPress={() => onPressSong(song.id)}>
-                <Card row style={{ paddingVertical: 10 }}>
-                  <GripIcon size={14} color={colors.text} strokeWidth={2} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CardTitle style={{ fontSize: 14 }}>{song.title}</CardTitle>
-                    <CardMeta>Key of {noteName(song.keyIdx, 'sharp')}</CardMeta>
-                  </View>
-                </Card>
-              </Pressable>
-            ))}
-          </ScrollView>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 8 }} showsVerticalScrollIndicator={false}>
+              {songs.map((song) => (
+                <Pressable key={song.id} onPress={() => onPressSong(song.id)}>
+                  <Card row style={{ paddingVertical: 10 }}>
+                    <GripIcon size={14} color={colors.text} strokeWidth={2} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <CardTitle style={{ fontSize: 14 }}>{song.title}</CardTitle>
+                      <CardMeta>Key of {noteName(song.keyIdx, 'sharp')}</CardMeta>
+                    </View>
+                  </Card>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
         </Pressable>
       </Pressable>
     </Modal>
