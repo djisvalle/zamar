@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { File } from 'expo-file-system';
 import { useTheme } from '../../theme/ThemeContext';
@@ -14,13 +14,27 @@ interface MusicXmlViewerProps {
   enharmonic: Enharmonic;
 }
 
+// MusicXML files are normally small, but the base64 bridge transfer has the
+// same memory cost here as it does for PDFs, so the guard is kept identical.
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
+
+// Matched to PdfViewer so both viewers load their inline HTML from the same
+// (non-opaque) origin.
+const BASE_URL = 'https://localhost';
+
+// Defense in depth: the viewer only ever renders its own inline document, so
+// refuse every navigation that isn't that document. (A blanket `false` would
+// also block iOS's initial load of the inline HTML itself.)
+function allowOnlyOwnDocument(request: { url: string }) {
+  return request.url === 'about:blank' || request.url.startsWith(BASE_URL);
+}
+
 export function MusicXmlViewer({ fileUri, transposeSemi, clef, enharmonic }: MusicXmlViewerProps) {
   const { colors } = useTheme();
   const webviewRef = useRef<WebView>(null);
 
   const [htmlLoaded, setHtmlLoaded] = useState(false);
   const [fileBase64, setFileBase64] = useState<string | null>(null);
-  const [webViewHeight, setWebViewHeight] = useState(400);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,6 +44,14 @@ export function MusicXmlViewer({ fileUri, transposeSemi, clef, enharmonic }: Mus
     (async () => {
       try {
         const file = new File(fileUri);
+        if (file.size > MAX_FILE_BYTES) {
+          if (!cancelled) {
+            setError(
+              `This file is too large to display (${Math.round(file.size / 1024 / 1024)} MB, limit 15 MB).`,
+            );
+          }
+          return;
+        }
         const base64 = await file.base64();
         if (!cancelled) setFileBase64(base64);
       } catch {
@@ -62,11 +84,21 @@ export function MusicXmlViewer({ fileUri, transposeSemi, clef, enharmonic }: Mus
     } catch {
       return;
     }
-    if (msg.type === 'height') {
-      setWebViewHeight(Math.max(msg.value, 120));
-    } else if (msg.type === 'error') {
+    if (msg.type === 'error') {
       setError(msg.message);
     }
+  }
+
+  // react-native-webview ships no web implementation, so on web the WebView
+  // would render a bare error string instead of the viewer.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>
+          Sheet music viewing isn't available on web yet — use the iOS or Android app.
+        </Text>
+      </View>
+    );
   }
 
   if (error) {
@@ -81,11 +113,13 @@ export function MusicXmlViewer({ fileUri, transposeSemi, clef, enharmonic }: Mus
   return (
     <WebView
       ref={webviewRef}
-      source={{ html: MUSIC_XML_VIEWER_HTML }}
+      source={{ html: MUSIC_XML_VIEWER_HTML, baseUrl: BASE_URL }}
       originWhitelist={['*']}
+      onShouldStartLoadWithRequest={allowOnlyOwnDocument}
       onLoadEnd={() => setHtmlLoaded(true)}
+      onError={() => setError('The sheet music viewer failed to load.')}
       onMessage={handleMessage}
-      style={{ height: webViewHeight, backgroundColor: 'transparent' }}
+      style={{ flex: 1, backgroundColor: 'transparent' }}
     />
   );
 }

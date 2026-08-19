@@ -28,8 +28,12 @@
   }
 
   var osmd = null;
+  // Rapid transpose taps can fire overlapping render() calls against the same
+  // OSMD instance; only the newest generation is allowed to touch the DOM.
+  var renderGeneration = 0;
 
   async function render(msg) {
+    var myGeneration = ++renderGeneration;
     try {
       var bytes = b64ToUint8Array(msg.base64);
       var xmlText;
@@ -55,11 +59,10 @@
         });
       }
       await osmd.load(transformed);
+      if (myGeneration !== renderGeneration) return;
       osmd.render();
-
-      var height = document.getElementById('osmd-container').scrollHeight;
-      post({ type: 'height', value: height });
     } catch (err) {
+      if (myGeneration !== renderGeneration) return;
       post({ type: 'error', message: (err && err.message) || String(err) });
     }
   }

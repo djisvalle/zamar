@@ -6,7 +6,12 @@ import { fontHeading, radius } from '../theme/tokens';
 import { useStore } from '../data/store';
 import { SongSource } from '../data/types';
 import { noteName } from '../music/notes';
-import { pickAndCopySheetFile, PDF_MIME_TYPES, MUSICXML_MIME_TYPES } from '../data/importSheetFile';
+import {
+  pickAndCopySheetFile,
+  discardCopiedSheetFile,
+  PDF_MIME_TYPES,
+  MUSICXML_MIME_TYPES,
+} from '../data/importSheetFile';
 import { RootStackParamList } from '../navigation/types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -45,6 +50,9 @@ export function AddSongScreen({ route, navigation }: Props) {
     try {
       const picked = await pickAndCopySheetFile(source === 'pdf' ? PDF_MIME_TYPES : MUSICXML_MIME_TYPES);
       if (picked) {
+        // The previous pick's copy in the document directory is now orphaned —
+        // nothing else ever references it, so drop it rather than leaking it.
+        discardCopiedSheetFile(sheetFileUri);
         setSheetFileUri(picked.uri);
         setSheetFileName(picked.name);
       }
@@ -107,6 +115,10 @@ export function AddSongScreen({ route, navigation }: Props) {
                 variant={active ? 'primary' : 'secondary'}
                 fontSize={10}
                 onPress={() => {
+                  if (s.value === source) return;
+                  // Switching tabs abandons whatever was picked for the old
+                  // tab; delete its copy so it doesn't linger on disk forever.
+                  discardCopiedSheetFile(sheetFileUri);
                   setSource(s.value);
                   setSheetFileUri(null);
                   setSheetFileName(null);

@@ -1,5 +1,5 @@
 import { reducer } from './store';
-import { Song } from './types';
+import { Song, SongSource } from './types';
 
 function baseSong(overrides: Partial<Song> = {}): Song {
   return {
@@ -44,6 +44,45 @@ describe('reducer — addSong', () => {
       sheetFileUri: 'file:///docs/my-song.pdf',
       sheetFileName: 'my-song.pdf',
       pdfAnnotations: {},
+    });
+  });
+
+  // sheetMode decides which viewer SheetView mounts, so each source needs to
+  // land on the right one.
+  describe('sheetMode derivation', () => {
+    function addWithSource(source: SongSource) {
+      const state = {
+        songs: {},
+        setlist: [],
+        settings: { appearance: 'light' as const, enharmonic: 'sharp' as const, libraryGroupByKey: false },
+      };
+      const next = reducer(state, {
+        type: 'addSong',
+        id: 'new-song',
+        addToSetlist: false,
+        input: {
+          title: 'My Song',
+          artist: '',
+          keyIdx: 0,
+          source,
+          chart: '',
+          sheetFileUri: null,
+          sheetFileName: null,
+        },
+      });
+      return next.songs['new-song'].sheetMode;
+    }
+
+    it("maps source 'pdf' to sheetMode 'pdf'", () => {
+      expect(addWithSource('pdf')).toBe('pdf');
+    });
+
+    it("maps source 'musicxml' to sheetMode 'musicxml'", () => {
+      expect(addWithSource('musicxml')).toBe('musicxml');
+    });
+
+    it("maps source 'type' to sheetMode 'musicxml'", () => {
+      expect(addWithSource('type')).toBe('musicxml');
     });
   });
 });

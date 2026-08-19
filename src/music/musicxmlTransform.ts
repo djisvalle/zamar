@@ -56,6 +56,29 @@ export function clefForName(clef: Clef): { sign: string; line: number } {
   return CLEF_SIGN[clef];
 }
 
+/**
+ * Shifts a key signature along the circle of fifths to match a semitone
+ * transposition. One semitone up = 7 fifths clockwise (C -> G -> D -> A -> E ->
+ * F# -> C#), so the arithmetic is just `fifths + 7 * semitones` wrapped back
+ * into a printable range.
+ *
+ * The result is normalized to [-6, 5] — one full lap of the circle — which
+ * keeps every key spellable without running into the double-accidental region
+ * beyond 7 sharps/flats. At the wrap point the same pitch level can be spelled
+ * either way (-6 = G-flat major, +6 = F-sharp major), so `enharmonic` picks the
+ * side: sharp spelling prefers +6 over -6.
+ */
+export function transposeKeyFifths(
+  fifths: number,
+  semitones: number,
+  enharmonic: Enharmonic,
+): number {
+  const raw = fifths + 7 * semitones;
+  let next = ((((raw + 6) % 12) + 12) % 12) - 6;
+  if (enharmonic === 'sharp' && next === -6) next = 6;
+  return next;
+}
+
 export function transformMusicXml(xml: string, opts: TransformOptions): string {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) {
@@ -115,9 +138,32 @@ export function transformMusicXml(xml: string, opts: TransformOptions): string {
     }
   }
 
+  // Key signatures have to move with the notes, otherwise a transposed score
+  // prints its original key signature and every transposed accidental shows up
+  // as an explicit one. Every <key> in the part is updated, so mid-score key
+  // changes stay consistent with the pitches around them.
+  if (opts.transposeSemi !== 0) {
+    const keyEls = Array.from(firstPart.getElementsByTagName('key'));
+    for (const keyEl of keyEls) {
+      const fifthsEl = keyEl.getElementsByTagName('fifths')[0];
+      if (!fifthsEl) continue;
+      const oldFifths = parseInt(fifthsEl.textContent || '0', 10);
+      if (Number.isNaN(oldFifths)) continue;
+      fifthsEl.textContent = String(transposeKeyFifths(oldFifths, opts.transposeSemi, opts.enharmonic));
+    }
+  }
+
+  // Only the part's *initial* staff-1 clef is rewritten. Overwriting every
+  // <clef> would flatten a grand staff's bass clef onto staff 1's sign and
+  // destroy legitimate mid-score clef changes.
   const { sign, line } = clefForName(opts.clef);
-  const clefEls = Array.from(firstPart.getElementsByTagName('clef'));
-  for (const clefEl of clefEls) {
+  const firstMeasure = firstPart.getElementsByTagName('measure')[0];
+  const clefCandidates = firstMeasure ? Array.from(firstMeasure.getElementsByTagName('clef')) : [];
+  const clefEl = clefCandidates.find((el) => {
+    const n = el.getAttribute('number');
+    return n === null || n === '1';
+  });
+  if (clefEl) {
     const signEl = clefEl.getElementsByTagName('sign')[0];
     const lineEl = clefEl.getElementsByTagName('line')[0];
     if (signEl) signEl.textContent = sign;

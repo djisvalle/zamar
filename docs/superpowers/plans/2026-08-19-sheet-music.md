@@ -1290,7 +1290,7 @@ Expected: no errors.
 
 - [ ] **Step 6: Manual smoke check**
 
-Run: `npm start`, open the app (web is fastest for a quick check: `npm run web`), go to Add Song, switch to PDF, tap the dropzone, pick any local PDF, confirm the dropzone updates to "Selected: <filename>" and Save becomes enabled. Repeat for MusicXML with a `.musicxml`/`.mxl` file. Cancelling the picker should leave the dropzone text unchanged and Save disabled.
+Run: `npm start` and open the app on a device or simulator (`npm run ios` / `npm run android`), go to Add Song, switch to PDF, tap the dropzone, pick any local PDF, confirm the dropzone updates to "Selected: <filename>" and Save becomes enabled. Repeat for MusicXML with a `.musicxml`/`.mxl` file. Cancelling the picker should leave the dropzone text unchanged and Save disabled.
 
 - [ ] **Step 7: Commit**
 
@@ -1718,9 +1718,11 @@ Expected: all suites pass (`chart.test.ts`, `store.test.ts`, `musicxmlTransform.
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 3: Start the app on web (fastest loop for manual verification)**
+- [ ] **Step 3: Start the app on a device or simulator**
 
-Run: `npm run web`
+Run: `npm run ios` or `npm run android`.
+
+The Sheet tab's PDF/MusicXML rendering must be verified on a device or simulator: `react-native-webview` has no web implementation, so the Sheet tab does not work under `npm run web`. Web is still fine for verifying the rest of the app (Chord tab, navigation), just not PDF/MusicXML rendering.
 
 - [ ] **Step 4: PDF flow**
 

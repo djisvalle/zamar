@@ -4,8 +4,14 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Song } from '../../data/types';
 import { Enharmonic } from '../../music/notes';
 import { Tag } from '../../ui/Tag';
-import { MusicXmlViewer } from './MusicXmlViewer';
-import { PdfViewer } from './PdfViewer';
+
+// Both viewers statically import a multi-megabyte generated HTML string, so
+// they're loaded on demand — only users who actually open the Sheet tab pay
+// the JS-parse cost.
+const MusicXmlViewer = React.lazy(() =>
+  import('./MusicXmlViewer').then((m) => ({ default: m.MusicXmlViewer })),
+);
+const PdfViewer = React.lazy(() => import('./PdfViewer').then((m) => ({ default: m.PdfViewer })));
 
 interface SheetViewProps {
   song: Song;
@@ -38,19 +44,29 @@ export function SheetView({ song, sourceLabel, liveKey, enharmonic, onUpdateSong
             No sheet music imported for this song yet.
           </Text>
         </View>
-      ) : song.sheetMode === 'pdf' ? (
-        <PdfViewer
-          fileUri={song.sheetFileUri}
-          annotations={song.pdfAnnotations}
-          onChangeAnnotations={(next) => onUpdateSong({ pdfAnnotations: next })}
-        />
       ) : (
-        <MusicXmlViewer
-          fileUri={song.sheetFileUri}
-          transposeSemi={song.transposeSemi}
-          clef={song.clef}
-          enharmonic={enharmonic}
-        />
+        <React.Suspense
+          fallback={
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>Loading…</Text>
+            </View>
+          }
+        >
+          {song.sheetMode === 'pdf' ? (
+            <PdfViewer
+              fileUri={song.sheetFileUri}
+              annotations={song.pdfAnnotations}
+              onChangeAnnotations={(next) => onUpdateSong({ pdfAnnotations: next })}
+            />
+          ) : (
+            <MusicXmlViewer
+              fileUri={song.sheetFileUri}
+              transposeSemi={song.transposeSemi}
+              clef={song.clef}
+              enharmonic={enharmonic}
+            />
+          )}
+        </React.Suspense>
       )}
     </View>
   );

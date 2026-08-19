@@ -24,6 +24,7 @@ var annotateMode = false;
 var strokesByPage = {};
 var currentStroke = null;
 var currentStrokePage = null;
+var pageObserver = null;
 
 async function ensurePdfJs() {
   if (pdfjsLib) return pdfjsLib;
@@ -94,17 +95,58 @@ function attachDrawing(svg, pageNum) {
     currentStroke = null;
     currentStrokePage = null;
   });
+  // A gesture the browser (or the OS) takes over fires pointercancel instead of
+  // pointerup: drop the in-progress stroke rather than leaving a half-drawn
+  // live path stuck on the page.
+  svg.addEventListener('pointercancel', function () {
+    if (currentStrokePage !== pageNum) return;
+    var live = svg.querySelector('#live-stroke');
+    if (live) svg.removeChild(live);
+    currentStroke = null;
+    currentStrokePage = null;
+  });
+}
+
+// Reports whichever page is most visible so the native side can target
+// undo/clear at the page the user is actually looking at.
+function observePages(wrappers) {
+  if (pageObserver) pageObserver.disconnect();
+  if (typeof IntersectionObserver === 'undefined') return;
+  var visibility = {};
+  pageObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        var num = Number(entry.target.getAttribute('data-page'));
+        visibility[num] = entry.isIntersecting ? entry.intersectionRatio : 0;
+      });
+      var bestPage = null;
+      var bestRatio = 0;
+      Object.keys(visibility).forEach(function (key) {
+        if (visibility[key] > bestRatio) {
+          bestRatio = visibility[key];
+          bestPage = Number(key);
+        }
+      });
+      if (bestPage !== null) post({ type: 'page', page: bestPage });
+    },
+    { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
+  );
+  wrappers.forEach(function (wrapper) {
+    pageObserver.observe(wrapper);
+  });
 }
 
 async function renderAllPages() {
   var container = document.getElementById('pages');
   container.innerHTML = '';
+  var wrappers = [];
   for (var pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
     var page = await pdfDoc.getPage(pageNum);
     var viewport = page.getViewport({ scale: scale });
 
     var wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
+    wrapper.setAttribute('data-page', String(pageNum));
 
     var canvas = document.createElement('canvas');
     canvas.width = viewport.width;
@@ -115,18 +157,25 @@ async function renderAllPages() {
     svg.setAttribute('id', 'ink-page-' + pageNum);
     svg.setAttribute('width', String(viewport.width));
     svg.setAttribute('height', String(viewport.height));
+    // Strokes are stored in unscaled page space (capture divides by `scale`),
+    // so the viewBox has to describe that same space or they render at 1/scale.
+    svg.setAttribute('viewBox', '0 0 ' + viewport.width / scale + ' ' + viewport.height / scale);
     svg.style.position = 'absolute';
     svg.style.top = '0';
     svg.style.left = '0';
     svg.style.pointerEvents = annotateMode ? 'auto' : 'none';
+    // Without this the compositor claims the gesture as a pan and fires
+    // pointercancel before pointerup, so strokes could never commit on touch.
+    svg.style.touchAction = annotateMode ? 'none' : 'auto';
     wrapper.appendChild(svg);
 
     container.appendChild(wrapper);
+    wrappers.push(wrapper);
     await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
     redrawStrokes(pageNum);
     attachDrawing(svg, pageNum);
   }
-  post({ type: 'height', value: container.scrollHeight });
+  observePages(wrappers);
 }
 
 async function handleMessage(msg) {
@@ -141,6 +190,7 @@ async function handleMessage(msg) {
       annotateMode = !!msg.value;
       Array.prototype.forEach.call(document.querySelectorAll('svg[id^="ink-page-"]'), function (svg) {
         svg.style.pointerEvents = annotateMode ? 'auto' : 'none';
+        svg.style.touchAction = annotateMode ? 'none' : 'auto';
       });
     } else if (msg.type === 'undoLastStroke') {
       var arr = (strokesByPage[msg.page] || []).slice();

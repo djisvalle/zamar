@@ -1,4 +1,6 @@
 const mockCopy = jest.fn();
+const mockDelete = jest.fn();
+const mockExists = { value: true };
 
 jest.mock('expo-document-picker', () => ({
   getDocumentAsync: jest.fn(),
@@ -8,6 +10,10 @@ jest.mock('expo-file-system', () => {
   const mockFile = jest.fn().mockImplementation((...args: string[]) => ({
     uri: args.length > 1 ? `${args[0]}${args[1]}` : args[0],
     copy: mockCopy,
+    delete: mockDelete,
+    get exists() {
+      return mockExists.value;
+    },
   }));
   return {
     File: mockFile,
@@ -17,7 +23,7 @@ jest.mock('expo-file-system', () => {
 
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
-import { pickAndCopySheetFile, PDF_MIME_TYPES } from './importSheetFile';
+import { pickAndCopySheetFile, discardCopiedSheetFile, PDF_MIME_TYPES } from './importSheetFile';
 
 const mockFile = jest.mocked(File);
 
@@ -58,5 +64,37 @@ describe('pickAndCopySheetFile', () => {
     mockCopy.mockRejectedValue(new Error('disk full'));
 
     await expect(pickAndCopySheetFile(PDF_MIME_TYPES)).rejects.toThrow('disk full');
+  });
+});
+
+describe('discardCopiedSheetFile', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockExists.value = true;
+  });
+
+  it('deletes the copy at the given uri', () => {
+    discardCopiedSheetFile('file:///docs/123-old.pdf');
+    expect(mockFile).toHaveBeenCalledWith('file:///docs/123-old.pdf');
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing when there is no uri', () => {
+    discardCopiedSheetFile(null);
+    expect(mockFile).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('skips deletion when the file no longer exists', () => {
+    mockExists.value = false;
+    discardCopiedSheetFile('file:///docs/gone.pdf');
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('swallows a deletion failure', () => {
+    mockDelete.mockImplementation(() => {
+      throw new Error('permission denied');
+    });
+    expect(() => discardCopiedSheetFile('file:///docs/locked.pdf')).not.toThrow();
   });
 });
