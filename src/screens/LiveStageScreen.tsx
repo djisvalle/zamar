@@ -38,7 +38,11 @@ export function LiveStageScreen({ route, navigation }: Props) {
   }
 
   const liveKey = noteName(((song.keyIdx + song.transposeSemi) % 12 + 12) % 12, store.settings.enharmonic);
-  const sourceLabel = song.sheetMode === 'pdf' ? 'Uploaded PDF — static' : 'MusicXML — transposable';
+  const sourceLabel = song.sheetFileName
+    ? `${song.sheetFileName} — ${song.sheetMode === 'pdf' ? 'static' : 'transposable'}`
+    : song.sheetMode === 'pdf'
+    ? 'Uploaded PDF — static'
+    : 'MusicXML — transposable';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -100,7 +104,13 @@ export function LiveStageScreen({ route, navigation }: Props) {
             autoScroll={song.autoScroll}
           />
         ) : (
-          <SheetView sheetMode={song.sheetMode} clef={song.clef} sourceLabel={sourceLabel} liveKey={liveKey} />
+          <SheetView
+            song={song}
+            sourceLabel={sourceLabel}
+            liveKey={liveKey}
+            enharmonic={store.settings.enharmonic}
+            onUpdateSong={(patch) => store.updateSong(song.id, patch)}
+          />
         )}
         <QuickToolsFab open={fabOpen} onToggle={() => setFabOpen((v) => !v)} />
       </View>
