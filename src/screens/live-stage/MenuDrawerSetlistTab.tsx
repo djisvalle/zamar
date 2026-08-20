@@ -36,7 +36,7 @@ export function MenuDrawerSetlistTab({ onOpenSetlistDetails }: MenuDrawerSetlist
             .filter((s): s is NonNullable<typeof s> => Boolean(s));
           const keyMap = setlistSongs.map((s) => noteName(s.keyIdx, settings.enharmonic)).join(' → ') || '—';
           return (
-            <View key={setlist.id} className="gap-1.5 rounded-md border border-border p-3">
+            <View key={setlist.id} className="gap-2 rounded-xl border border-border bg-background p-4">
               <Pressable
                 className="flex-row items-center justify-between gap-2"
                 onPress={() => onOpenSetlistDetails(setlist.id)}

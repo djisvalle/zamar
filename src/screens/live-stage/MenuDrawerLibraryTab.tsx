@@ -50,7 +50,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong }: MenuDrawe
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-1 px-2.5 py-1.5"
+        contentContainerClassName="gap-2 px-3 py-3"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -61,7 +61,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong }: MenuDrawe
               <View className="h-px flex-1 bg-border" />
             </View>
           ) : (
-            <View key={item.song.id} className="flex-row items-center gap-2 rounded-md border border-border px-2 py-1.5">
+            <View key={item.song.id} className="flex-row items-center gap-3 rounded-xl border border-border bg-background px-3 py-3">
               <Pressable className="min-w-0 flex-1" onPress={() => onNavigateSong(item.song.id)}>
                 <Text className="text-[14px] font-medium text-foreground" numberOfLines={1}>
                   {item.song.title}

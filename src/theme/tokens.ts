@@ -77,8 +77,8 @@ export function makeTheme(appearance: Appearance): ThemeColors {
   const text = isDark ? neutral[100] : '#201f1d';
   const accent = isDark ? accentLight[400] : '#b68235';
   return {
-    bg: isDark ? '#171614' : '#f6f4f0',
-    surface: isDark ? '#211f1c' : '#eeece7',
+    bg: isDark ? '#10100f' : '#f6f4f0',
+    surface: isDark ? '#191816' : '#eeece7',
     text,
     textMuted: isDark ? '#b9b3aa' : '#716d66',
     divider: isDark ? 'rgba(248, 244, 244, 0.16)' : 'rgba(32, 31, 29, 0.14)',
