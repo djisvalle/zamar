@@ -169,3 +169,71 @@ export function TrashIcon({ size = 16, color = '#000', strokeWidth = 2 }: IconPr
     </Svg>
   );
 }
+
+// Icon paths lifted verbatim from StageChart - Setlist Builder.dc.html (design spec).
+export function LibraryIcon({ size = 18, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <Path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </Svg>
+  );
+}
+
+export function SetlistIcon({ size = 18, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="M11 18H3" />
+      <Path d="M15 12H3" />
+      <Path d="M17 6H3" />
+      <Path d="m19 16 2 2 4-4" transform="translate(-3 0)" />
+    </Svg>
+  );
+}
+
+export function StarIcon({
+  size = 16,
+  color = '#000',
+  strokeWidth = 2,
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? color : 'none'}
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" />
+    </Svg>
+  );
+}
+
+export function XIcon({ size = 14, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="M18 6 6 18" />
+      <Path d="m6 6 12 12" />
+    </Svg>
+  );
+}
+
+export function ChevronUpIcon({ size = 14, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="m18 15-6-6-6 6" />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon({ size = 14, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
