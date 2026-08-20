@@ -1,30 +1,33 @@
 import React, { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
 import { Appearance } from '../theme/tokens';
 import { Enharmonic } from '../music/notes';
-import { LIBRARY_SEED, SETLIST_SEED } from './mockSongs';
-import { NewSongInput, Song } from './types';
+import { LIBRARY_SEED, SETLISTS_SEED } from './mockSongs';
+import { LibrarySort, NewSongInput, Setlist, Song } from './types';
 
 interface AppSettings {
   appearance: Appearance; // "Appearance (app-wide)"
   enharmonic: Enharmonic; // "Enharmonic" — also app-wide per the settings sheet
-  libraryGroupByKey: boolean;
+  librarySort: LibrarySort;
 }
 
 interface State {
   songs: Record<string, Song>;
-  setlist: string[];
+  setlists: Record<string, Setlist>;
+  setlistOrder: string[];
   settings: AppSettings;
 }
 
 type Action =
   | { type: 'updateSong'; id: string; patch: Partial<Song> }
-  | { type: 'addSong'; id: string; input: NewSongInput; addToSetlist: boolean }
+  | { type: 'addSong'; id: string; input: NewSongInput }
   | { type: 'setAppearance'; appearance: Appearance }
   | { type: 'setEnharmonic'; enharmonic: Enharmonic }
-  | { type: 'setLibraryGroupByKey'; value: boolean };
+  | { type: 'setLibrarySort'; value: LibrarySort }
+  | { type: 'createSetlist'; id: string; name: string; songIds: string[] }
+  | { type: 'updateSetlist'; id: string; patch: Partial<Pick<Setlist, 'name' | 'songIds'>> };
 
 function slugify(title: string) {
-  const base = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'song';
+  const base = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'item';
   return `${base}-${Date.now().toString(36)}`;
 }
 
@@ -49,24 +52,34 @@ export function reducer(state: State, action: Action): State {
         sheetFileUri: action.input.sheetFileUri,
         sheetFileName: action.input.sheetFileName,
         pdfAnnotations: {},
+        favorite: false,
         transposeSemi: 0,
         capo: 0,
         clef: 'treble',
         sheetMode: action.input.source === 'pdf' ? 'pdf' : 'musicxml',
         autoScroll: false,
       };
-      return {
-        ...state,
-        songs: { ...state.songs, [id]: song },
-        setlist: action.addToSetlist ? [...state.setlist, id] : state.setlist,
-      };
+      return { ...state, songs: { ...state.songs, [id]: song } };
     }
     case 'setAppearance':
       return { ...state, settings: { ...state.settings, appearance: action.appearance } };
     case 'setEnharmonic':
       return { ...state, settings: { ...state.settings, enharmonic: action.enharmonic } };
-    case 'setLibraryGroupByKey':
-      return { ...state, settings: { ...state.settings, libraryGroupByKey: action.value } };
+    case 'setLibrarySort':
+      return { ...state, settings: { ...state.settings, librarySort: action.value } };
+    case 'createSetlist': {
+      const setlist: Setlist = { id: action.id, name: action.name, songIds: action.songIds };
+      return {
+        ...state,
+        setlists: { ...state.setlists, [action.id]: setlist },
+        setlistOrder: [...state.setlistOrder, action.id],
+      };
+    }
+    case 'updateSetlist': {
+      const setlist = state.setlists[action.id];
+      if (!setlist) return state;
+      return { ...state, setlists: { ...state.setlists, [action.id]: { ...setlist, ...action.patch } } };
+    }
     default:
       return state;
   }
@@ -75,23 +88,32 @@ export function reducer(state: State, action: Action): State {
 function initState(): State {
   const songs: Record<string, Song> = {};
   for (const s of LIBRARY_SEED) songs[s.id] = s;
+  const setlists: Record<string, Setlist> = {};
+  const setlistOrder: string[] = [];
+  for (const sl of SETLISTS_SEED) {
+    setlists[sl.id] = sl;
+    setlistOrder.push(sl.id);
+  }
   return {
     songs,
-    setlist: SETLIST_SEED,
-    settings: { appearance: 'light', enharmonic: 'sharp', libraryGroupByKey: false },
+    setlists,
+    setlistOrder,
+    settings: { appearance: 'light', enharmonic: 'sharp', librarySort: 'letter' },
   };
 }
 
 interface StoreValue {
   songs: Record<string, Song>;
   library: Song[];
-  setlist: Song[];
+  setlists: Setlist[];
   settings: AppSettings;
   updateSong: (id: string, patch: Partial<Song>) => void;
-  addSong: (input: NewSongInput, addToSetlist: boolean) => string;
+  addSong: (input: NewSongInput) => string;
   setAppearance: (a: Appearance) => void;
   setEnharmonic: (e: Enharmonic) => void;
-  setLibraryGroupByKey: (v: boolean) => void;
+  setLibrarySort: (v: LibrarySort) => void;
+  createSetlist: (name: string, songIds: string[]) => string;
+  updateSetlist: (id: string, patch: Partial<Pick<Setlist, 'name' | 'songIds'>>) => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -103,35 +125,47 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'updateSong', id, patch });
   }, []);
 
-  const addSong = useCallback((input: NewSongInput, addToSetlist: boolean) => {
+  const addSong = useCallback((input: NewSongInput) => {
     const id = slugify(input.title);
-    dispatch({ type: 'addSong', id, input, addToSetlist });
+    dispatch({ type: 'addSong', id, input });
     return id;
   }, []);
 
   const setAppearance = useCallback((appearance: Appearance) => dispatch({ type: 'setAppearance', appearance }), []);
   const setEnharmonic = useCallback((enharmonic: Enharmonic) => dispatch({ type: 'setEnharmonic', enharmonic }), []);
-  const setLibraryGroupByKey = useCallback(
-    (value: boolean) => dispatch({ type: 'setLibraryGroupByKey', value }),
+  const setLibrarySort = useCallback((value: LibrarySort) => dispatch({ type: 'setLibrarySort', value }), []);
+
+  const createSetlist = useCallback((name: string, songIds: string[]) => {
+    const id = slugify(name);
+    dispatch({ type: 'createSetlist', id, name, songIds });
+    return id;
+  }, []);
+
+  const updateSetlist = useCallback(
+    (id: string, patch: Partial<Pick<Setlist, 'name' | 'songIds'>>) => {
+      dispatch({ type: 'updateSetlist', id, patch });
+    },
     [],
   );
 
   const library = useMemo(() => Object.values(state.songs), [state.songs]);
-  const setlist = useMemo(
-    () => state.setlist.map((id) => state.songs[id]).filter((s): s is Song => Boolean(s)),
-    [state.setlist, state.songs],
+  const setlists = useMemo(
+    () => state.setlistOrder.map((id) => state.setlists[id]).filter((s): s is Setlist => Boolean(s)),
+    [state.setlistOrder, state.setlists],
   );
 
   const value: StoreValue = {
     songs: state.songs,
     library,
-    setlist,
+    setlists,
     settings: state.settings,
     updateSong,
     addSong,
     setAppearance,
     setEnharmonic,
-    setLibraryGroupByKey,
+    setLibrarySort,
+    createSetlist,
+    updateSetlist,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

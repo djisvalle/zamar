@@ -1,5 +1,5 @@
 import { reducer } from './store';
-import { Song, SongSource } from './types';
+import { Song, SongSource, Setlist } from './types';
 
 function baseSong(overrides: Partial<Song> = {}): Song {
   return {
@@ -19,17 +19,29 @@ function baseSong(overrides: Partial<Song> = {}): Song {
     sheetFileUri: null,
     sheetFileName: null,
     pdfAnnotations: {},
+    favorite: false,
     ...overrides,
   };
 }
 
+function baseState(overrides: {
+  songs?: Record<string, Song>;
+  setlists?: Record<string, Setlist>;
+  setlistOrder?: string[];
+} = {}) {
+  return {
+    songs: overrides.songs ?? {},
+    setlists: overrides.setlists ?? {},
+    setlistOrder: overrides.setlistOrder ?? [],
+    settings: { appearance: 'light' as const, enharmonic: 'sharp' as const, librarySort: 'letter' as const },
+  };
+}
+
 describe('reducer — addSong', () => {
-  it('stores sheetFileUri/sheetFileName from the input and starts with empty annotations', () => {
-    const state = { songs: {}, setlist: [], settings: { appearance: 'light' as const, enharmonic: 'sharp' as const, libraryGroupByKey: false } };
-    const next = reducer(state, {
+  it('stores sheetFileUri/sheetFileName from the input, starts with empty annotations and favorite false', () => {
+    const next = reducer(baseState(), {
       type: 'addSong',
       id: 'new-song',
-      addToSetlist: false,
       input: {
         title: 'My Song',
         artist: 'Me',
@@ -44,22 +56,15 @@ describe('reducer — addSong', () => {
       sheetFileUri: 'file:///docs/my-song.pdf',
       sheetFileName: 'my-song.pdf',
       pdfAnnotations: {},
+      favorite: false,
     });
   });
 
-  // sheetMode decides which viewer SheetView mounts, so each source needs to
-  // land on the right one.
   describe('sheetMode derivation', () => {
     function addWithSource(source: SongSource) {
-      const state = {
-        songs: {},
-        setlist: [],
-        settings: { appearance: 'light' as const, enharmonic: 'sharp' as const, libraryGroupByKey: false },
-      };
-      const next = reducer(state, {
+      const next = reducer(baseState(), {
         type: 'addSong',
         id: 'new-song',
-        addToSetlist: false,
         input: {
           title: 'My Song',
           artist: '',
@@ -90,12 +95,71 @@ describe('reducer — addSong', () => {
 describe('reducer — updateSong', () => {
   it('merges a pdfAnnotations patch onto the existing song', () => {
     const song = baseSong({ pdfAnnotations: { 1: [{ color: '#d33', width: 3, points: [{ x: 0, y: 0 }] }] } });
-    const state = { songs: { s1: song }, setlist: [], settings: { appearance: 'light' as const, enharmonic: 'sharp' as const, libraryGroupByKey: false } };
-    const next = reducer(state, {
+    const next = reducer(baseState({ songs: { s1: song } }), {
       type: 'updateSong',
       id: 's1',
       patch: { pdfAnnotations: { ...song.pdfAnnotations, 2: [{ color: '#d33', width: 3, points: [{ x: 5, y: 5 }] }] } },
     });
     expect(Object.keys(next.songs.s1.pdfAnnotations)).toEqual(['1', '2']);
+  });
+
+  it('toggles favorite on an existing song', () => {
+    const song = baseSong({ favorite: false });
+    const next = reducer(baseState({ songs: { s1: song } }), {
+      type: 'updateSong',
+      id: 's1',
+      patch: { favorite: true },
+    });
+    expect(next.songs.s1.favorite).toBe(true);
+  });
+});
+
+describe('reducer — setLibrarySort', () => {
+  it('updates settings.librarySort', () => {
+    const next = reducer(baseState(), { type: 'setLibrarySort', value: 'artist' });
+    expect(next.settings.librarySort).toBe('artist');
+  });
+});
+
+describe('reducer — createSetlist', () => {
+  it('adds a new named setlist and appends it to setlistOrder', () => {
+    const next = reducer(baseState(), {
+      type: 'createSetlist',
+      id: 'sl1',
+      name: 'Sunday AM',
+      songIds: ['s1', 's2'],
+    });
+    expect(next.setlists.sl1).toEqual({ id: 'sl1', name: 'Sunday AM', songIds: ['s1', 's2'] });
+    expect(next.setlistOrder).toEqual(['sl1']);
+  });
+
+  it('appends after existing setlists, preserving their order', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'First', songIds: [] } },
+      setlistOrder: ['sl1'],
+    });
+    const next = reducer(state, { type: 'createSetlist', id: 'sl2', name: 'Second', songIds: [] });
+    expect(next.setlistOrder).toEqual(['sl1', 'sl2']);
+  });
+});
+
+describe('reducer — updateSetlist', () => {
+  it('merges a patch onto the existing setlist', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] } },
+      setlistOrder: ['sl1'],
+    });
+    const next = reducer(state, {
+      type: 'updateSetlist',
+      id: 'sl1',
+      patch: { name: 'Sunday AM — Aug 23', songIds: ['s1', 's2'] },
+    });
+    expect(next.setlists.sl1).toEqual({ id: 'sl1', name: 'Sunday AM — Aug 23', songIds: ['s1', 's2'] });
+  });
+
+  it('is a no-op when the setlist does not exist', () => {
+    const state = baseState();
+    const next = reducer(state, { type: 'updateSetlist', id: 'missing', patch: { name: 'X' } });
+    expect(next).toBe(state);
   });
 });

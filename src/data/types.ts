@@ -1,6 +1,7 @@
 export type SongSource = 'pdf' | 'musicxml' | 'type';
 export type Clef = 'treble' | 'alto' | 'bass';
 export type SheetMode = 'pdf' | 'musicxml';
+export type LibrarySort = 'letter' | 'key' | 'artist';
 
 export interface Stroke {
   color: string;
@@ -26,6 +27,8 @@ export interface Song {
   sheetFileName: string | null;
   /** freehand pen annotations for the pdf sheet mode, keyed by page number */
   pdfAnnotations: Record<number, Stroke[]>;
+  /** starred for quick access — surfaced as a filter when building a setlist */
+  favorite: boolean;
 
   // Per-song live-performance state, remembered across visits to Live Stage.
   transposeSemi: number;
@@ -39,3 +42,9 @@ export type NewSongInput = Pick<
   Song,
   'title' | 'artist' | 'keyIdx' | 'source' | 'chart' | 'sheetFileUri' | 'sheetFileName'
 >;
+
+export interface Setlist {
+  id: string;
+  name: string;
+  songIds: string[];
+}

@@ -1,6 +1,6 @@
 import { AMAZING_GRACE_CHART } from '../music/chart';
 import { keyIndex } from '../music/notes';
-import { Song } from './types';
+import { Setlist, Song } from './types';
 
 function seed(
   id: string,
@@ -21,6 +21,7 @@ function seed(
     sheetFileUri: null,
     sheetFileName: null,
     pdfAnnotations: {},
+    favorite: false,
     transposeSemi: 0,
     capo: 0,
     clef: 'treble',
@@ -36,9 +37,10 @@ export const LIBRARY_SEED: Song[] = [
     tempo: 72,
     chart: AMAZING_GRACE_CHART,
     capo: 3, // matches the spec's opening Settings state exactly
+    favorite: true,
   }),
   seed('this-is-amazing-grace', 'This Is Amazing Grace', 'Phil Wickham', 'G', { tempo: 128 }),
-  seed('way-maker', 'Way Maker', 'Sinach', 'E', { tempo: 140 }),
+  seed('way-maker', 'Way Maker', 'Sinach', 'E', { tempo: 140, favorite: true }),
   seed('great-are-you-lord', 'Great Are You Lord', 'All Sons & Daughters', 'A', { tempo: 72 }),
   seed('o-come-to-the-altar', 'O Come to the Altar', 'Elevation Worship', 'B', { tempo: 68 }),
   seed('reckless-love', 'Reckless Love', 'Cory Asbury', 'C'),
@@ -48,11 +50,18 @@ export const LIBRARY_SEED: Song[] = [
   seed('goodness-of-god', 'Goodness of God', 'Bethel Music', 'A'),
 ];
 
-// Matches the `setlist` array in Component.renderVals() — the songs queued
-// for tonight's set, in order.
-export const SETLIST_SEED: string[] = [
-  'great-are-you-lord',
-  'this-is-amazing-grace',
-  'o-come-to-the-altar',
-  'way-maker',
+// Two named setlists matching the two example cards in
+// "StageChart - Setlist Builder.dc.html" — same songs/keys as the app's old
+// single unnamed setlist (Sunday AM), plus a second for Youth Night.
+export const SETLISTS_SEED: Setlist[] = [
+  {
+    id: 'sunday-am-aug-23',
+    name: 'Sunday AM — Aug 23',
+    songIds: ['great-are-you-lord', 'this-is-amazing-grace', 'o-come-to-the-altar', 'way-maker'],
+  },
+  {
+    id: 'youth-night-aug-27',
+    name: 'Youth Night — Aug 27',
+    songIds: ['reckless-love', 'blessed-assurance', 'amazing-grace'],
+  },
 ];

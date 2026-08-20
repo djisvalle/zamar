@@ -1,5 +1,5 @@
 export type RootStackParamList = {
   Library: undefined;
   LiveStage: { songId: string };
-  AddSong: { addToSetlist: boolean };
+  AddSong: { mode: 'create' } | { mode: 'edit'; songId: string };
 };
