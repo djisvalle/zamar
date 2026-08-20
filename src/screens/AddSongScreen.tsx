@@ -16,7 +16,7 @@ import { RootStackParamList } from '../navigation/types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Tag } from '../ui/Tag';
-import { ChevronLeftIcon, PdfFileIcon, TypeInIcon, UploadIcon, XmlFileIcon } from '../ui/icons';
+import { ChevronLeftIcon, PdfFileIcon, StarIcon, TypeInIcon, UploadIcon, XmlFileIcon } from '../ui/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddSong'>;
 
@@ -27,19 +27,30 @@ const SOURCES: { value: SongSource; label: string }[] = [
 ];
 
 export function AddSongScreen({ route, navigation }: Props) {
-  const { addToSetlist } = route.params;
   const { colors } = useTheme();
   const store = useStore();
 
-  const [source, setSource] = useState<SongSource>('type');
-  const [title, setTitle] = useState('');
-  const [artist, setArtist] = useState('');
-  const [keyIdx, setKeyIdx] = useState(0);
-  const [chart, setChart] = useState('');
-  const [sheetFileUri, setSheetFileUri] = useState<string | null>(null);
-  const [sheetFileName, setSheetFileName] = useState<string | null>(null);
+  const isEdit = route.params.mode === 'edit';
+  const existing = isEdit ? store.songs[route.params.songId] : undefined;
+
+  const [source, setSource] = useState<SongSource>(existing?.source ?? 'type');
+  const [title, setTitle] = useState(existing?.title ?? '');
+  const [artist, setArtist] = useState(existing?.artist ?? '');
+  const [keyIdx, setKeyIdx] = useState(existing?.keyIdx ?? 0);
+  const [chart, setChart] = useState(existing?.chart ?? '');
+  const [sheetFileUri, setSheetFileUri] = useState<string | null>(existing?.sheetFileUri ?? null);
+  const [sheetFileName, setSheetFileName] = useState<string | null>(existing?.sheetFileName ?? null);
+  const [favorite, setFavorite] = useState(existing?.favorite ?? false);
   const [picking, setPicking] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
+
+  if (isEdit && !existing) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: colors.text }}>Song not found.</Text>
+      </SafeAreaView>
+    );
+  }
 
   const fileReady = source === 'type' || Boolean(sheetFileUri);
   const canSave = title.trim().length > 0 && fileReady;
@@ -65,19 +76,23 @@ export function AddSongScreen({ route, navigation }: Props) {
 
   function handleSave() {
     if (!canSave) return;
-    const id = store.addSong(
-      {
-        title: title.trim(),
-        artist: artist.trim(),
-        keyIdx,
-        source,
-        chart: source === 'type' ? chart : '',
-        sheetFileUri: source === 'type' ? null : sheetFileUri,
-        sheetFileName: source === 'type' ? null : sheetFileName,
-      },
-      addToSetlist,
-    );
-    navigation.replace('LiveStage', { songId: id });
+    const input = {
+      title: title.trim(),
+      artist: artist.trim(),
+      keyIdx,
+      source,
+      chart: source === 'type' ? chart : '',
+      sheetFileUri: source === 'type' ? null : sheetFileUri,
+      sheetFileName: source === 'type' ? null : sheetFileName,
+    };
+    if (isEdit && existing) {
+      store.updateSong(existing.id, { ...input, favorite });
+      navigation.goBack();
+    } else {
+      const id = store.addSong(input);
+      if (favorite) store.updateSong(id, { favorite: true });
+      navigation.replace('LiveStage', { songId: id });
+    }
   }
 
   return (
@@ -99,7 +114,9 @@ export function AddSongScreen({ route, navigation }: Props) {
         <Button variant="ghost" icon size={32} accessibilityLabel="Back" onPress={() => navigation.goBack()}>
           <ChevronLeftIcon size={16} color={colors.text} />
         </Button>
-        <Text style={[fontHeading, { flex: 1, fontSize: 15, color: colors.text }]}>Add Song</Text>
+        <Text style={[fontHeading, { flex: 1, fontSize: 15, color: colors.text }]}>
+          {isEdit ? 'Edit Song' : 'Add Song'}
+        </Text>
         <Button variant="primary" onPress={handleSave} disabled={!canSave} fontSize={12}>
           Save
         </Button>
@@ -164,6 +181,15 @@ export function AddSongScreen({ route, navigation }: Props) {
               onPress={() => setKeyIdx((k) => (k + 1) % 12)}
             >
               <Text style={{ color: colors.text, fontSize: 14 }}>+</Text>
+            </Button>
+            <Button
+              variant={favorite ? 'primary' : 'secondary'}
+              icon
+              size={30}
+              accessibilityLabel={favorite ? 'Remove from favorites' : 'Add to favorites'}
+              onPress={() => setFavorite((f) => !f)}
+            >
+              <StarIcon size={14} color={colors.accent} filled={favorite} />
             </Button>
           </View>
         </View>
