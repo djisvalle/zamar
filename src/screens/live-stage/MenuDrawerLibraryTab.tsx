@@ -26,7 +26,10 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
   const { colors } = useTheme();
   const { library, settings, setLibrarySort, updateSong } = useStore();
 
-  const items = useMemo(() => groupLibrary(library, settings.librarySort), [library, settings.librarySort]);
+  const items = useMemo(
+    () => groupLibrary(library, settings.librarySort, settings.enharmonic),
+    [library, settings.librarySort, settings.enharmonic],
+  );
 
   return (
     <View className="flex-1">
@@ -59,7 +62,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
                   {item.song.title}
                 </Text>
                 <Text className="text-[12px] text-muted-foreground" numberOfLines={1}>
-                  {item.song.artist} · {noteName(item.song.keyIdx, 'sharp')}
+                  {item.song.artist} · {noteName(item.song.keyIdx, settings.enharmonic)}
                 </Text>
               </Pressable>
               <Button

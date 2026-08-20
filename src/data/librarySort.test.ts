@@ -31,7 +31,7 @@ describe('groupLibrary', () => {
   ];
 
   it('groups by first letter of title when sorted "letter", alphabetized', () => {
-    const items = groupLibrary(songs, 'letter');
+    const items = groupLibrary(songs, 'letter', 'sharp');
     expect(items).toEqual([
       { type: 'divider', label: 'A' },
       { type: 'song', song: songs[1] },
@@ -43,7 +43,7 @@ describe('groupLibrary', () => {
   });
 
   it('groups by key label when sorted "key", ordered by pitch class', () => {
-    const items = groupLibrary(songs, 'key');
+    const items = groupLibrary(songs, 'key', 'sharp');
     expect(items.filter((i) => i.type === 'divider').map((i) => i.label)).toEqual([
       'Key of D',
       'Key of E',
@@ -52,7 +52,15 @@ describe('groupLibrary', () => {
   });
 
   it('groups by artist when sorted "artist"', () => {
-    const items = groupLibrary(songs, 'artist');
+    const items = groupLibrary(songs, 'artist', 'sharp');
     expect(items.filter((i) => i.type === 'divider').map((i) => i.label)).toEqual(['Sinach', 'Traditional']);
+  });
+
+  it('spells key divider labels flat when enharmonic preference is "flat"', () => {
+    const flatSongs = [...songs, song({ title: 'Great Are You Lord', artist: 'All Sons & Daughters', keyIdx: 6 })];
+    const items = groupLibrary(flatSongs, 'key', 'flat');
+    const labels = items.filter((i) => i.type === 'divider').map((i) => i.label);
+    expect(labels).toContain('Key of Gb');
+    expect(labels).not.toContain('Key of F#');
   });
 });

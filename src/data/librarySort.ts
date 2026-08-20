@@ -1,9 +1,9 @@
 import { LibrarySort, Song } from './types';
-import { noteName } from '../music/notes';
+import { Enharmonic, noteName } from '../music/notes';
 
 export type LibraryListItem = { type: 'divider'; label: string } | { type: 'song'; song: Song };
 
-export function groupLibrary(songs: Song[], sort: LibrarySort): LibraryListItem[] {
+export function groupLibrary(songs: Song[], sort: LibrarySort, enharmonic: Enharmonic): LibraryListItem[] {
   const sorted = [...songs].sort((a, b) => {
     if (sort === 'key') {
       const d = a.keyIdx - b.keyIdx;
@@ -17,7 +17,7 @@ export function groupLibrary(songs: Song[], sort: LibrarySort): LibraryListItem[
   });
 
   const groupOf = (song: Song): string => {
-    if (sort === 'key') return `Key of ${noteName(song.keyIdx, 'sharp')}`;
+    if (sort === 'key') return `Key of ${noteName(song.keyIdx, enharmonic)}`;
     if (sort === 'artist') return song.artist;
     return song.title[0]?.toUpperCase() ?? '#';
   };

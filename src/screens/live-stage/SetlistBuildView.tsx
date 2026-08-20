@@ -17,7 +17,7 @@ interface SetlistBuildViewProps {
 
 export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
   const { colors } = useTheme();
-  const { library, setlists, createSetlist, updateSetlist } = useStore();
+  const { library, setlists, settings, createSetlist, updateSetlist } = useStore();
   const existing = setlistId ? setlists.find((s) => s.id === setlistId) ?? null : null;
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -30,7 +30,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
   const available = library
     .filter((s) => !draftIds.includes(s.id))
     .filter((s) => addFilter === 'all' || s.favorite);
-  const keyMap = draftSongs.map((s) => noteName(s.keyIdx, 'sharp')).join(' → ') || '—';
+  const keyMap = draftSongs.map((s) => noteName(s.keyIdx, settings.enharmonic)).join(' → ') || '—';
   const canSave = name.trim().length > 0;
 
   function moveDraft(index: number, dir: -1 | 1) {
@@ -79,7 +79,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
                 {song.title}
               </Text>
               <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                {song.artist} · Key of {noteName(song.keyIdx, 'sharp')}
+                {song.artist} · Key of {noteName(song.keyIdx, settings.enharmonic)}
               </Text>
             </View>
             <View className="gap-0.5">
@@ -143,7 +143,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
                 {song.title}
               </Text>
               <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                {noteName(song.keyIdx, 'sharp')}
+                {noteName(song.keyIdx, settings.enharmonic)}
               </Text>
             </View>
             <Button

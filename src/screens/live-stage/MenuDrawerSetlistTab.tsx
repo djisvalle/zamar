@@ -14,7 +14,7 @@ interface MenuDrawerSetlistTabProps {
 
 export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabProps) {
   const { colors } = useTheme();
-  const { setlists, songs, deleteSetlist } = useStore();
+  const { setlists, songs, settings, deleteSetlist } = useStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [buildTarget, setBuildTarget] = useState<'new' | string | null>(null);
 
@@ -31,7 +31,7 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
           const setlistSongs = setlist.songIds
             .map((id) => songs[id])
             .filter((s): s is NonNullable<typeof s> => Boolean(s));
-          const keyMap = setlistSongs.map((s) => noteName(s.keyIdx, 'sharp')).join(' → ') || '—';
+          const keyMap = setlistSongs.map((s) => noteName(s.keyIdx, settings.enharmonic)).join(' → ') || '—';
           const expanded = expandedId === setlist.id;
           return (
             <View key={setlist.id} className="gap-1.5 rounded-md border border-border p-3">
@@ -86,7 +86,7 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
                           {song.title}
                         </Text>
                         <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                          Key of {noteName(song.keyIdx, 'sharp')}
+                          Key of {noteName(song.keyIdx, settings.enharmonic)}
                         </Text>
                       </View>
                     </Pressable>

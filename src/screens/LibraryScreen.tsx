@@ -30,8 +30,8 @@ export function LibraryScreen({ navigation }: Props) {
             noteName(s.keyIdx, 'sharp').toLowerCase().includes(q),
         )
       : library;
-    return groupLibrary(filtered, settings.librarySort);
-  }, [library, search, settings.librarySort]);
+    return groupLibrary(filtered, settings.librarySort, settings.enharmonic);
+  }, [library, search, settings.librarySort, settings.enharmonic]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -80,7 +80,7 @@ export function LibraryScreen({ navigation }: Props) {
               >
                 <CardTitle>{item.song.title}</CardTitle>
                 <CardMeta>
-                  {item.song.artist} · {noteName(item.song.keyIdx, 'sharp')}
+                  {item.song.artist} · {noteName(item.song.keyIdx, settings.enharmonic)}
                 </CardMeta>
               </Pressable>
               <Button
