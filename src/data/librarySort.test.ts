@@ -4,7 +4,6 @@ import { Song } from './types';
 function song(overrides: Partial<Song> & { title: string }): Song {
   return {
     id: overrides.title.toLowerCase().replace(/\s+/g, '-'),
-    title: overrides.title,
     artist: 'Unknown',
     keyIdx: 0,
     tempo: 90,
