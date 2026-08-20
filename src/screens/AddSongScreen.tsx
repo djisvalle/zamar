@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { fontHeading, radius } from '../theme/tokens';
 import { useStore } from '../data/store';
+import { deriveSheetMode } from '../data/sheetMode';
 import { SongSource } from '../data/types';
 import { noteName } from '../music/notes';
 import {
@@ -33,6 +34,13 @@ export function AddSongScreen({ route, navigation }: Props) {
   const isEdit = route.params.mode === 'edit';
   const existing = isEdit ? store.songs[route.params.songId] : undefined;
 
+  // The song's originally-saved file, captured once up front. `existing`
+  // doesn't change during this screen's lifetime, so this is safe as a plain
+  // const rather than state. Used to guard against discarding the live,
+  // still-referenced-by-the-store file before a save actually happens, and
+  // to know which file to discard once it's genuinely been superseded.
+  const originalSheetFileUri = existing?.sheetFileUri ?? null;
+
   const [source, setSource] = useState<SongSource>(existing?.source ?? 'type');
   const [title, setTitle] = useState(existing?.title ?? '');
   const [artist, setArtist] = useState(existing?.artist ?? '');
@@ -61,9 +69,12 @@ export function AddSongScreen({ route, navigation }: Props) {
     try {
       const picked = await pickAndCopySheetFile(source === 'pdf' ? PDF_MIME_TYPES : MUSICXML_MIME_TYPES);
       if (picked) {
-        // The previous pick's copy in the document directory is now orphaned —
-        // nothing else ever references it, so drop it rather than leaking it.
-        discardCopiedSheetFile(sheetFileUri);
+        // The previous pick's copy in the document directory is now orphaned,
+        // so drop it rather than leaking it — UNLESS it's still the song's
+        // original, already-saved file (edit mode): that one is still
+        // referenced by the store until a save actually happens, so it must
+        // survive until then (see originalSheetFileUri above).
+        if (sheetFileUri !== originalSheetFileUri) discardCopiedSheetFile(sheetFileUri);
         setSheetFileUri(picked.uri);
         setSheetFileName(picked.name);
       }
@@ -86,7 +97,14 @@ export function AddSongScreen({ route, navigation }: Props) {
       sheetFileName: source === 'type' ? null : sheetFileName,
     };
     if (isEdit && existing) {
-      store.updateSong(existing.id, { ...input, favorite });
+      store.updateSong(existing.id, { ...input, favorite, sheetMode: deriveSheetMode(source) });
+      // The song's record now points at whatever file it should (possibly
+      // unchanged, possibly the freshly-picked replacement). If the original
+      // file was superseded, nothing references it anymore, so it's now safe
+      // to discard — this is the one place that's allowed to delete it.
+      if (originalSheetFileUri && sheetFileUri !== originalSheetFileUri) {
+        discardCopiedSheetFile(originalSheetFileUri);
+      }
       navigation.goBack();
     } else {
       const id = store.addSong(input);
@@ -135,7 +153,11 @@ export function AddSongScreen({ route, navigation }: Props) {
                   if (s.value === source) return;
                   // Switching tabs abandons whatever was picked for the old
                   // tab; delete its copy so it doesn't linger on disk forever.
-                  discardCopiedSheetFile(sheetFileUri);
+                  // Exception: in edit mode, the old tab may still be showing
+                  // the song's original, already-saved file rather than a
+                  // fresh pick — that one is still referenced by the store
+                  // until a save happens, so it must not be deleted here.
+                  if (sheetFileUri !== originalSheetFileUri) discardCopiedSheetFile(sheetFileUri);
                   setSource(s.value);
                   setSheetFileUri(null);
                   setSheetFileName(null);

@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useMemo, useReducer } fr
 import { Appearance } from '../theme/tokens';
 import { Enharmonic } from '../music/notes';
 import { LIBRARY_SEED, SETLISTS_SEED } from './mockSongs';
+import { deriveSheetMode } from './sheetMode';
 import { LibrarySort, NewSongInput, Setlist, Song } from './types';
 
 interface AppSettings {
@@ -56,7 +57,7 @@ export function reducer(state: State, action: Action): State {
         transposeSemi: 0,
         capo: 0,
         clef: 'treble',
-        sheetMode: action.input.source === 'pdf' ? 'pdf' : 'musicxml',
+        sheetMode: deriveSheetMode(action.input.source),
         autoScroll: false,
       };
       return { ...state, songs: { ...state.songs, [id]: song } };
