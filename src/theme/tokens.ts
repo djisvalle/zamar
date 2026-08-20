@@ -77,11 +77,11 @@ export function makeTheme(appearance: Appearance): ThemeColors {
   const text = isDark ? neutral[100] : '#201f1d';
   const accent = isDark ? accentLight[400] : '#b68235';
   return {
-    bg: isDark ? '#1c1a19' : '#f3f2f2',
-    surface: isDark ? '#262320' : '#eae9e9',
+    bg: isDark ? '#10100f' : '#f6f4f0',
+    surface: isDark ? '#191816' : '#eeece7',
     text,
-    textMuted: mix(text, 65),
-    divider: mix(text, isDark ? 14 : 16),
+    textMuted: isDark ? '#b9b3aa' : '#716d66',
+    divider: isDark ? 'rgba(248, 244, 244, 0.16)' : 'rgba(32, 31, 29, 0.14)',
     accent,
     accentTint: (pct: number) => mix(accent, pct),
     overlay: mix(neutral[900], 55),

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, SafeAreaView, StatusBar, View } from 'react-native';
+import { Pressable, SafeAreaView, StatusBar, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'LiveStage'>;
 // pre-loading a song.
 export function LiveStageScreen({ route, navigation }: Props) {
   const songId = route.params?.songId;
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const { colors } = useTheme();
   const store = useStore();
   const song = songId ? store.songs[songId] : undefined;
@@ -82,9 +84,10 @@ export function LiveStageScreen({ route, navigation }: Props) {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 8,
-          height: 44,
-          paddingHorizontal: 8,
+          gap: 10,
+          minHeight: isTablet ? 58 : 56,
+          paddingHorizontal: isTablet ? 20 : 14,
+          paddingVertical: 6,
           borderBottomWidth: 1,
           borderBottomColor: colors.divider,
           backgroundColor: colors.surface,
@@ -123,12 +126,13 @@ export function LiveStageScreen({ route, navigation }: Props) {
               alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: 10,
-              paddingHorizontal: 20,
-              paddingTop: 14,
+              paddingHorizontal: isTablet ? 28 : 18,
+              paddingTop: isTablet ? 22 : 16,
+              paddingBottom: 4,
             }}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[fontHeading, { fontSize: 19, fontWeight: '700', color: colors.text, lineHeight: 22 }]} numberOfLines={1}>
+              <Text style={[fontHeading, { fontSize: isTablet ? 21 : 20, fontWeight: '700', color: colors.text, lineHeight: 24 }]} numberOfLines={1}>
                 {song.title}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 1 }} numberOfLines={1}>
@@ -136,10 +140,9 @@ export function LiveStageScreen({ route, navigation }: Props) {
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <ViewTab label="Chord Chart" active={view === 'chord'} onPress={() => setView('chord')} />
-                <View style={{ width: 1, height: 12, backgroundColor: colors.divider }} />
-                <ViewTab label="Sheet Music" active={view === 'sheet'} onPress={() => setView('sheet')} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 3, borderRadius: 8, backgroundColor: colors.surface }}>
+                <ViewTab label="Chord" active={view === 'chord'} onPress={() => setView('chord')} />
+                <ViewTab label="Sheet" active={view === 'sheet'} onPress={() => setView('sheet')} />
               </View>
               <Text style={{ fontSize: 12, color: colors.accent }}>Key of {liveKey}</Text>
               {inSetlistContext && (
@@ -262,9 +265,10 @@ function ViewTab({ label, active, onPress }: { label: string; active: boolean; o
             fontWeight: '600',
             color: active ? colors.accent : colors.text,
             opacity: active ? 1 : 0.55,
-            paddingBottom: 2,
-            borderBottomWidth: 2,
-            borderBottomColor: active ? colors.accent : 'transparent',
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            borderRadius: 6,
+            backgroundColor: active ? colors.accentTint(18) : 'transparent',
           },
         ]}
       >

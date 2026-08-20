@@ -16,7 +16,7 @@ export function MenuDrawerSettingsTab({ song }: MenuDrawerSettingsTabProps) {
   const { settings, setEnharmonic, setAppearance, setAutoOrderSetlists, updateSong } = useStore();
 
   return (
-    <View className="flex-1 gap-4 p-3.5">
+    <View className="flex-1 gap-5 p-4">
       <Text className="text-[14px] font-semibold text-foreground">Settings</Text>
 
       <View className="gap-2">

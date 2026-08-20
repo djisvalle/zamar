@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, View, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '../../theme/ThemeContext';
@@ -28,6 +28,8 @@ const TAB_LABEL: Record<RailTab, string> = {
 
 export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSong, onOpenSetlistDetails }: MenuDrawerProps) {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const [tab, setTab] = useState<RailTab | null>(null);
 
   useEffect(() => {
@@ -39,10 +41,10 @@ export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSon
       <Pressable className="flex-1 flex-row bg-black/45" onPress={onClose}>
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="h-full w-[78%] overflow-hidden rounded-r-2xl bg-card"
+          className={`h-full overflow-hidden rounded-r-2xl bg-card ${isTablet ? 'w-[440px]' : 'w-[86%]'}`}
         >
           <SafeAreaView style={{ flex: 1 }}>
-            <View className="flex-row items-center justify-between border-b border-border px-3 py-2.5">
+            <View className="flex-row items-center justify-between border-b border-border px-4 py-4">
               <View className="flex-row items-center gap-1.5">
                 {tab !== null && (
                   <Button
@@ -72,7 +74,7 @@ export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSon
 
             <View className="min-w-0 flex-1">
               {tab === null && (
-                <View className="gap-1 p-2.5">
+                <View className="gap-2 p-4">
                   <MenuListItem label="Library" onPress={() => setTab('library')}>
                     <LibraryIcon size={18} color={colors.text} />
                   </MenuListItem>
@@ -110,7 +112,7 @@ function MenuListItem({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-lg border border-border px-3 py-3 active:bg-accent/40"
+      className="flex-row items-center gap-3 rounded-xl border border-border bg-background px-4 py-4 active:bg-accent/40"
     >
       {children}
       <Text className="flex-1 text-[15px] font-medium text-foreground">{label}</Text>

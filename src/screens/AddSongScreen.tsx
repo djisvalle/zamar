@@ -122,8 +122,8 @@ export function AddSongScreen({ route, navigation }: Props) {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 8,
-          paddingHorizontal: 10,
-          paddingVertical: 8,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
           borderBottomWidth: 1,
           borderBottomColor: colors.divider,
           backgroundColor: colors.surface,
@@ -140,7 +140,7 @@ export function AddSongScreen({ route, navigation }: Props) {
         </Button>
       </View>
 
-      <View style={{ flex: 1, padding: 14, gap: 8 }}>
+      <View style={{ flex: 1, padding: 16, gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {SOURCES.map((s) => {
             const active = s.value === source;
