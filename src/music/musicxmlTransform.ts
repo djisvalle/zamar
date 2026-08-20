@@ -13,6 +13,7 @@ interface TransformOptions {
   transposeSemi: number;
   enharmonic: Enharmonic;
   clef: Clef;
+  showNoteNames?: boolean;
 }
 
 const STEP_SEMITONE: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -56,6 +57,10 @@ export function clefForName(clef: Clef): { sign: string; line: number } {
   return CLEF_SIGN[clef];
 }
 
+export function noteNameLabel(step: string, alter: number): string {
+  return alter === 1 ? `${step}#` : alter === -1 ? `${step}b` : step;
+}
+
 /**
  * Shifts a key signature along the circle of fifths to match a semitone
  * transposition. One semitone up = 7 fifths clockwise (C -> G -> D -> A -> E ->
@@ -94,23 +99,12 @@ export function transformMusicXml(xml: string, opts: TransformOptions): string {
     throw new Error('No <part> elements found');
   }
   const firstPart = parts[0];
-  const firstPartId = firstPart.getAttribute('id');
 
-  for (let i = parts.length - 1; i >= 1; i--) {
-    parts[i].parentNode?.removeChild(parts[i]);
-  }
-
-  const partListEls = doc.getElementsByTagName('part-list');
-  if (partListEls.length > 0) {
-    const scoreParts = Array.from(partListEls[0].getElementsByTagName('score-part'));
-    for (const scorePart of scoreParts) {
-      if (scorePart.getAttribute('id') !== firstPartId) {
-        scorePart.parentNode?.removeChild(scorePart);
-      }
-    }
-  }
-
-  const pitches = Array.from(firstPart.getElementsByTagName('pitch'));
+  // Every part transposes together -- a performance-key change moves the
+  // whole ensemble, not just one instrument. Which parts are *shown* is a
+  // separate, WebView-side concern (OSMD's Instrument.Visible), so this
+  // function no longer discards any part.
+  const pitches = parts.flatMap((part) => Array.from(part.getElementsByTagName('pitch')));
   for (const pitchEl of pitches) {
     const stepEl = pitchEl.getElementsByTagName('step')[0];
     const alterEl = pitchEl.getElementsByTagName('alter')[0];
@@ -136,14 +130,39 @@ export function transformMusicXml(xml: string, opts: TransformOptions): string {
     } else if (alterEl) {
       alterEl.parentNode?.removeChild(alterEl);
     }
+
+    // <notehead-text> must precede <staff>/<beam>/<notations>/<lyric>/<play>/
+    // <listen> in <note>'s content model (unlike <lyric>, which is always
+    // last regardless of what else the note carries), so it's inserted before
+    // the first of those siblings rather than simply appended. Each <note> in
+    // a chord stack (the base note plus every <chord/>-marked note above it)
+    // carries its own <pitch>, so this runs once per chord member -- no note
+    // in a chord is skipped or collapsed onto a single label.
+    if (opts.showNoteNames) {
+      const noteEl = pitchEl.parentElement;
+      if (noteEl && noteEl.tagName === 'note') {
+        const notheadTextEl = doc.createElement('notehead-text');
+        const displayTextEl = doc.createElement('display-text');
+        displayTextEl.textContent = `${noteNameLabel(next.step, next.alter)}${next.octave}`;
+        notheadTextEl.appendChild(displayTextEl);
+        const followingEl = Array.from(noteEl.children).find((child) =>
+          ['staff', 'beam', 'notations', 'lyric', 'play', 'listen'].includes(child.tagName),
+        );
+        if (followingEl) {
+          noteEl.insertBefore(notheadTextEl, followingEl);
+        } else {
+          noteEl.appendChild(notheadTextEl);
+        }
+      }
+    }
   }
 
   // Key signatures have to move with the notes, otherwise a transposed score
   // prints its original key signature and every transposed accidental shows up
-  // as an explicit one. Every <key> in the part is updated, so mid-score key
+  // as an explicit one. Every <key> in every part is updated, so mid-score key
   // changes stay consistent with the pitches around them.
   if (opts.transposeSemi !== 0) {
-    const keyEls = Array.from(firstPart.getElementsByTagName('key'));
+    const keyEls = parts.flatMap((part) => Array.from(part.getElementsByTagName('key')));
     for (const keyEl of keyEls) {
       const fifthsEl = keyEl.getElementsByTagName('fifths')[0];
       if (!fifthsEl) continue;
@@ -153,8 +172,12 @@ export function transformMusicXml(xml: string, opts: TransformOptions): string {
     }
   }
 
-  // Only the part's *initial* staff-1 clef is rewritten. Overwriting every
-  // <clef> would flatten a grand staff's bass clef onto staff 1's sign and
+  // Only the *first part's* initial staff-1 clef is rewritten -- other parts
+  // (now that they're no longer discarded) keep their own printed clef, since
+  // each instrument's native clef is often musically correct (e.g. cello in
+  // bass, flute in treble) and forcing them all onto one clef would misrepresent
+  // transposing/bass instruments. Overwriting every <clef> within that first
+  // part would also flatten a grand staff's bass clef onto staff 1's sign and
   // destroy legitimate mid-score clef changes.
   // A file is allowed to declare its clef in a later measure rather than the
   // first, so when the strict search finds nothing, widen to the whole part --

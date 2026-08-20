@@ -8,12 +8,11 @@ import { useStore } from '../../data/store';
 import { groupLibrary } from '../../data/librarySort';
 import { LibrarySort } from '../../data/types';
 import { noteName } from '../../music/notes';
-import { EditIcon, PlusIcon, StarIcon } from '../../ui/icons';
+import { PlusIcon, StarIcon } from '../../ui/icons';
 
 interface MenuDrawerLibraryTabProps {
   onNavigateSong: (id: string) => void;
   onCreateSong: () => void;
-  onEditSong: (id: string) => void;
 }
 
 const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
@@ -22,7 +21,7 @@ const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
   { value: 'artist', label: 'Artist' },
 ];
 
-export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong }: MenuDrawerLibraryTabProps) {
+export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong }: MenuDrawerLibraryTabProps) {
   const { colors } = useTheme();
   const { library, settings, setLibrarySort, updateSong } = useStore();
 
@@ -35,7 +34,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
     <View className="flex-1">
       <View className="flex-row items-center justify-between gap-2 border-b border-border px-3 pb-1.5 pt-2.5">
         <Text className="text-[15px] font-semibold text-foreground">
-          My Songs <Text className="text-[11px] font-normal text-muted-foreground">· {library.length}</Text>
+          Library <Text className="text-[11px] font-normal text-muted-foreground">· {library.length}</Text>
         </Text>
         <Button
           variant="secondary"
@@ -50,6 +49,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
       </View>
 
       <ScrollView
+        className="flex-1"
         contentContainerClassName="gap-1 px-2.5 py-1.5"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -79,16 +79,6 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
                 onPress={() => updateSong(item.song.id, { favorite: !item.song.favorite })}
               >
                 <StarIcon size={14} color={colors.accent} filled={item.song.favorite} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                hitSlop={6}
-                accessibilityLabel="Edit song"
-                onPress={() => onEditSong(item.song.id)}
-              >
-                <EditIcon size={13} color={colors.text} />
               </Button>
             </View>
           ),

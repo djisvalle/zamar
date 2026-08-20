@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '../../theme/ThemeContext';
 import { Song } from '../../data/types';
-import { LibraryIcon, SetlistIcon, SettingsIcon, XIcon } from '../../ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon, LibraryIcon, SetlistIcon, SettingsIcon, XIcon } from '../../ui/icons';
 import { MenuDrawerLibraryTab } from './MenuDrawerLibraryTab';
 import { MenuDrawerSetlistTab } from './MenuDrawerSetlistTab';
 import { MenuDrawerSettingsTab } from './MenuDrawerSettingsTab';
@@ -14,56 +14,80 @@ type RailTab = 'library' | 'setlist' | 'settings';
 interface MenuDrawerProps {
   visible: boolean;
   onClose: () => void;
-  song: Song;
+  song?: Song;
   onNavigateSong: (id: string) => void;
   onCreateSong: () => void;
-  onEditSong: (id: string) => void;
+  onOpenSetlistDetails: (id: string) => void;
 }
 
-export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSong, onEditSong }: MenuDrawerProps) {
+const TAB_LABEL: Record<RailTab, string> = {
+  library: 'Library',
+  setlist: 'Setlist',
+  settings: 'Settings',
+};
+
+export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSong, onOpenSetlistDetails }: MenuDrawerProps) {
   const { colors } = useTheme();
-  const [tab, setTab] = useState<RailTab>('library');
+  const [tab, setTab] = useState<RailTab | null>(null);
+
+  useEffect(() => {
+    if (visible) setTab(null);
+  }, [visible]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable className="flex-1 flex-row bg-black/45" onPress={onClose}>
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="h-full w-[78%] flex-row overflow-hidden rounded-r-2xl bg-card"
+          className="h-full w-[78%] overflow-hidden rounded-r-2xl bg-card"
         >
-          <SafeAreaView className="flex-1 flex-row">
-            <View className="w-24 gap-3.5 border-r border-border px-1.5 py-2.5">
-              <View className="flex-row items-center justify-between px-1">
-                <Text className="text-[14px] font-semibold text-foreground">Menu</Text>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  hitSlop={8}
-                  onPress={onClose}
-                  accessibilityLabel="Close"
-                >
-                  <XIcon size={11} color={colors.text} />
-                </Button>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View className="flex-row items-center justify-between border-b border-border px-3 py-2.5">
+              <View className="flex-row items-center gap-1.5">
+                {tab !== null && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    hitSlop={8}
+                    onPress={() => setTab(null)}
+                    accessibilityLabel="Back to menu"
+                  >
+                    <ChevronLeftIcon size={16} color={colors.text} />
+                  </Button>
+                )}
+                <Text className="text-[14px] font-semibold text-foreground">{tab === null ? 'Menu' : TAB_LABEL[tab]}</Text>
               </View>
-              <View className="gap-1.5">
-                <RailButton active={tab === 'library'} label="Library" onPress={() => setTab('library')}>
-                  <LibraryIcon size={18} color={tab === 'library' ? colors.accent : colors.text} />
-                </RailButton>
-                <RailButton active={tab === 'setlist'} label="Setlist" onPress={() => setTab('setlist')}>
-                  <SetlistIcon size={18} color={tab === 'setlist' ? colors.accent : colors.text} />
-                </RailButton>
-                <RailButton active={tab === 'settings'} label="Settings" onPress={() => setTab('settings')}>
-                  <SettingsIcon size={18} color={tab === 'settings' ? colors.accent : colors.text} />
-                </RailButton>
-              </View>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                hitSlop={8}
+                onPress={onClose}
+                accessibilityLabel="Close"
+              >
+                <XIcon size={11} color={colors.text} />
+              </Button>
             </View>
 
             <View className="min-w-0 flex-1">
-              {tab === 'library' && (
-                <MenuDrawerLibraryTab onNavigateSong={onNavigateSong} onCreateSong={onCreateSong} onEditSong={onEditSong} />
+              {tab === null && (
+                <View className="gap-1 p-2.5">
+                  <MenuListItem label="Library" onPress={() => setTab('library')}>
+                    <LibraryIcon size={18} color={colors.text} />
+                  </MenuListItem>
+                  <MenuListItem label="Setlist" onPress={() => setTab('setlist')}>
+                    <SetlistIcon size={18} color={colors.text} />
+                  </MenuListItem>
+                  <MenuListItem label="Settings" onPress={() => setTab('settings')}>
+                    <SettingsIcon size={18} color={colors.text} />
+                  </MenuListItem>
+                </View>
               )}
-              {tab === 'setlist' && <MenuDrawerSetlistTab onNavigateSong={onNavigateSong} />}
+              {tab === 'library' && (
+                <MenuDrawerLibraryTab onNavigateSong={onNavigateSong} onCreateSong={onCreateSong} />
+              )}
+              {tab === 'setlist' && <MenuDrawerSetlistTab onOpenSetlistDetails={onOpenSetlistDetails} />}
               {tab === 'settings' && <MenuDrawerSettingsTab song={song} />}
             </View>
           </SafeAreaView>
@@ -73,21 +97,24 @@ export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSon
   );
 }
 
-function RailButton({
-  active,
+function MenuListItem({
   label,
   onPress,
   children,
 }: {
-  active: boolean;
   label: string;
   onPress: () => void;
   children: React.ReactNode;
 }) {
+  const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} className={`items-center gap-1 rounded-md px-1 py-2 ${active ? 'bg-accent' : 'bg-transparent'}`}>
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 rounded-lg border border-border px-3 py-3 active:bg-accent/40"
+    >
       {children}
-      <Text className={`text-[10.5px] ${active ? 'font-medium text-primary' : 'text-foreground/65'}`}>{label}</Text>
+      <Text className="flex-1 text-[15px] font-medium text-foreground">{label}</Text>
+      <ChevronRightIcon size={16} color={colors.textMuted} />
     </Pressable>
   );
 }

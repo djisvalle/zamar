@@ -14,7 +14,6 @@ function song(overrides: Partial<Song> & { title: string }): Song {
     capo: 0,
     clef: 'treble',
     sheetMode: 'musicxml',
-    autoScroll: false,
     sheetFileUri: null,
     sheetFileName: null,
     pdfAnnotations: {},

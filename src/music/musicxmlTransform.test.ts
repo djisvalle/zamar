@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { transposePitch, clefForName, transposeKeyFifths, transformMusicXml } from './musicxmlTransform';
+import { transposePitch, clefForName, transposeKeyFifths, noteNameLabel, transformMusicXml } from './musicxmlTransform';
 import { MUSIC_XML_VIEWER_HTML } from '../screens/live-stage/generated/musicXmlViewerHtml';
 
 describe('transposePitch', () => {
@@ -27,6 +27,20 @@ describe('transposePitch', () => {
 
   it('handles zero transposition as a no-op respelling', () => {
     expect(transposePitch('E', 0, 5, 0, 'sharp')).toEqual({ step: 'E', alter: 0, octave: 5 });
+  });
+});
+
+describe('noteNameLabel', () => {
+  it('returns the bare step for a natural', () => {
+    expect(noteNameLabel('C', 0)).toBe('C');
+  });
+
+  it('appends # for alter 1', () => {
+    expect(noteNameLabel('F', 1)).toBe('F#');
+  });
+
+  it('appends b for alter -1', () => {
+    expect(noteNameLabel('B', -1)).toBe('Bb');
   });
 });
 
@@ -98,22 +112,25 @@ describe('transformMusicXml', () => {
     return new DOMParser().parseFromString(xml, 'application/xml');
   }
 
-  it('keeps only the first part, in both <part> and <part-list>', () => {
+  it('keeps every part, in both <part> and <part-list> -- filtering is a WebView-side concern now', () => {
     const out = parse(transformMusicXml(SAMPLE_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble' }));
-    expect(out.getElementsByTagName('part')).toHaveLength(1);
-    expect(out.getElementsByTagName('part')[0].getAttribute('id')).toBe('P1');
-    expect(out.getElementsByTagName('score-part')).toHaveLength(1);
-    expect(out.getElementsByTagName('score-part')[0].getAttribute('id')).toBe('P1');
+    expect(out.getElementsByTagName('part')).toHaveLength(2);
+    expect(Array.from(out.getElementsByTagName('part')).map((p) => p.getAttribute('id'))).toEqual(['P1', 'P2']);
+    expect(out.getElementsByTagName('score-part')).toHaveLength(2);
+    expect(Array.from(out.getElementsByTagName('score-part')).map((p) => p.getAttribute('id'))).toEqual([
+      'P1',
+      'P2',
+    ]);
   });
 
-  it('rewrites the clef', () => {
+  it('rewrites the clef of only the first part', () => {
     const out = parse(transformMusicXml(SAMPLE_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'alto' }));
     const clef = out.getElementsByTagName('clef')[0];
     expect(clef.getElementsByTagName('sign')[0].textContent).toBe('C');
     expect(clef.getElementsByTagName('line')[0].textContent).toBe('3');
   });
 
-  it('transposes every pitch in the kept part by the given semitones', () => {
+  it('transposes pitches in every part by the given semitones', () => {
     const out = parse(transformMusicXml(SAMPLE_XML, { transposeSemi: 2, enharmonic: 'sharp', clef: 'treble' }));
     const pitches = Array.from(out.getElementsByTagName('pitch'));
     expect(pitches).toHaveLength(2);
@@ -128,6 +145,156 @@ describe('transformMusicXml', () => {
     expect(second.getElementsByTagName('step')[0].textContent).toBe('G');
     expect(second.getElementsByTagName('alter')[0].textContent).toBe('1');
     expect(second.getElementsByTagName('octave')[0].textContent).toBe('4');
+  });
+
+  it('adds no <notehead-text> elements when showNoteNames is unset', () => {
+    const out = parse(transformMusicXml(SAMPLE_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble' }));
+    expect(out.getElementsByTagName('notehead-text')).toHaveLength(0);
+  });
+
+  it('injects a notehead-text/display-text pair per pitched note when showNoteNames is set', () => {
+    const out = parse(
+      transformMusicXml(SAMPLE_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble', showNoteNames: true }),
+    );
+    const notes = Array.from(out.getElementsByTagName('note')).filter(
+      (n) => n.getElementsByTagName('pitch').length > 0,
+    );
+    expect(notes).toHaveLength(2);
+    for (const note of notes) {
+      expect(note.getElementsByTagName('notehead-text')).toHaveLength(1);
+    }
+    expect(
+      notes[0].getElementsByTagName('notehead-text')[0].getElementsByTagName('display-text')[0].textContent,
+    ).toBe('C4');
+    // F#4 -> sharp spelling keeps it F#
+    expect(
+      notes[1].getElementsByTagName('notehead-text')[0].getElementsByTagName('display-text')[0].textContent,
+    ).toBe('F#4');
+  });
+
+  it('spells injected note names using the requested enharmonic and transposition', () => {
+    const out = parse(
+      transformMusicXml(SAMPLE_XML, { transposeSemi: 2, enharmonic: 'flat', clef: 'treble', showNoteNames: true }),
+    );
+    const notes = Array.from(out.getElementsByTagName('note')).filter(
+      (n) => n.getElementsByTagName('pitch').length > 0,
+    );
+    // C4 + 2 semitones = D4 (flat spelling has no accidental here)
+    expect(
+      notes[0].getElementsByTagName('notehead-text')[0].getElementsByTagName('display-text')[0].textContent,
+    ).toBe('D4');
+    // F#4 (pc 6) + 2 semitones = pc 8 = Ab4 in flat spelling
+    expect(
+      notes[1].getElementsByTagName('notehead-text')[0].getElementsByTagName('display-text')[0].textContent,
+    ).toBe('Ab4');
+  });
+
+  it('does not add a <notehead-text> to a rest', () => {
+    const out = parse(
+      transformMusicXml(SAMPLE_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble', showNoteNames: true }),
+    );
+    const restNote = Array.from(out.getElementsByTagName('note')).find((n) => n.getElementsByTagName('rest').length > 0)!;
+    expect(restNote.getElementsByTagName('notehead-text')).toHaveLength(0);
+  });
+
+  const CHORD_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <lyric number="1"><text>la</text></lyric>
+      </note>
+      <note>
+        <chord/>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>4</duration>
+      </note>
+      <note>
+        <chord/>
+        <pitch><step>G</step><octave>4</octave></pitch>
+        <duration>4</duration>
+      </note>
+    </measure>
+  </part>
+</score-partwise>`;
+
+  it('gives every note in a chord stack its own notehead-text label, not just the base note', () => {
+    const out = parse(
+      transformMusicXml(CHORD_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble', showNoteNames: true }),
+    );
+    const notes = Array.from(out.getElementsByTagName('note'));
+    expect(notes).toHaveLength(3);
+    const labels = notes.map(
+      (n) => n.getElementsByTagName('notehead-text')[0]?.getElementsByTagName('display-text')[0]?.textContent,
+    );
+    expect(labels).toEqual(['C4', 'E4', 'G4']);
+  });
+
+  it('inserts notehead-text before an existing <lyric> so the note stays schema-valid', () => {
+    const out = parse(
+      transformMusicXml(CHORD_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble', showNoteNames: true }),
+    );
+    const baseNote = out.getElementsByTagName('note')[0];
+    const children = Array.from(baseNote.children).map((c) => c.tagName);
+    expect(children.indexOf('notehead-text')).toBeLessThan(children.indexOf('lyric'));
+  });
+
+  it('transposes a second part independently of the first', () => {
+    const twoMelodicParts = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Flute</part-name></score-part>
+    <score-part id="P2"><part-name>Cello</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration></note>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const out = parse(transformMusicXml(twoMelodicParts, { transposeSemi: 2, enharmonic: 'sharp', clef: 'treble' }));
+    const pitches = Array.from(out.getElementsByTagName('pitch'));
+    expect(pitches).toHaveLength(2);
+    expect(pitches[0].getElementsByTagName('step')[0].textContent).toBe('D');
+    expect(pitches[0].getElementsByTagName('octave')[0].textContent).toBe('5');
+    expect(pitches[1].getElementsByTagName('step')[0].textContent).toBe('D');
+    expect(pitches[1].getElementsByTagName('octave')[0].textContent).toBe('3');
+  });
+
+  it('leaves a second part\'s own clef untouched', () => {
+    const twoClefs = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Flute</part-name></score-part>
+    <score-part id="P2"><part-name>Cello</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><clef><sign>G</sign><line>2</line></clef></attributes>
+      <note><rest/><duration>4</duration></note>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes><clef><sign>F</sign><line>4</line></clef></attributes>
+      <note><rest/><duration>4</duration></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const out = parse(transformMusicXml(twoClefs, { transposeSemi: 0, enharmonic: 'sharp', clef: 'bass' }));
+    const clefs = Array.from(out.getElementsByTagName('clef'));
+    expect(clefs[0].getElementsByTagName('sign')[0].textContent).toBe('F'); // rewritten to bass
+    expect(clefs[0].getElementsByTagName('line')[0].textContent).toBe('4');
+    expect(clefs[1].getElementsByTagName('sign')[0].textContent).toBe('F'); // untouched, was already bass
+    expect(clefs[1].getElementsByTagName('line')[0].textContent).toBe('4');
   });
 
   it('transposes the key signature along with the pitches', () => {
@@ -274,7 +441,7 @@ describe('generated MusicXML WebView bundle', () => {
       'application/xml',
     );
 
-    expect(out.getElementsByTagName('part')).toHaveLength(1);
+    expect(out.getElementsByTagName('part')).toHaveLength(2);
 
     const pitches = Array.from(out.getElementsByTagName('pitch'));
     expect(pitches).toHaveLength(2);
@@ -287,6 +454,18 @@ describe('generated MusicXML WebView bundle', () => {
     const clef = out.getElementsByTagName('clef')[0];
     expect(clef.getElementsByTagName('sign')[0].textContent).toBe('C');
     expect(clef.getElementsByTagName('line')[0].textContent).toBe('3');
+  });
+
+  it('is not stale: the bundle carries the showNoteNames notehead-text injection from source', () => {
+    const fn = evalBundleTransform();
+    const out = new DOMParser().parseFromString(
+      fn(SAMPLE_XML, { transposeSemi: 0, enharmonic: 'sharp', clef: 'treble', showNoteNames: true }),
+      'application/xml',
+    );
+    const noteheadTexts = Array.from(out.getElementsByTagName('notehead-text'));
+    expect(noteheadTexts).toHaveLength(2);
+    expect(noteheadTexts[0].getElementsByTagName('display-text')[0].textContent).toBe('C4');
+    expect(noteheadTexts[1].getElementsByTagName('display-text')[0].textContent).toBe('F#4');
   });
 
   it('is not stale: the bundle carries the late-clef fallback from source', () => {

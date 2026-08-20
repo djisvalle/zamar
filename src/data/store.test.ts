@@ -15,7 +15,6 @@ function baseSong(overrides: Partial<Song> = {}): Song {
     capo: 0,
     clef: 'treble',
     sheetMode: 'musicxml',
-    autoScroll: false,
     sheetFileUri: null,
     sheetFileName: null,
     pdfAnnotations: {},
@@ -28,12 +27,22 @@ function baseState(overrides: {
   songs?: Record<string, Song>;
   setlists?: Record<string, Setlist>;
   setlistOrder?: string[];
+  activeSetlistId?: string | null;
+  activeSongId?: string | null;
 } = {}) {
   return {
     songs: overrides.songs ?? {},
     setlists: overrides.setlists ?? {},
     setlistOrder: overrides.setlistOrder ?? [],
-    settings: { appearance: 'light' as const, enharmonic: 'sharp' as const, librarySort: 'letter' as const },
+    activeSetlistId: overrides.activeSetlistId ?? null,
+    activeSongId: overrides.activeSongId ?? null,
+    settings: {
+      appearance: 'light' as const,
+      enharmonic: 'sharp' as const,
+      showNoteNames: false,
+      librarySort: 'letter' as const,
+      autoOrderSetlists: true,
+    },
   };
 }
 
@@ -121,6 +130,20 @@ describe('reducer — setLibrarySort', () => {
   });
 });
 
+describe('reducer — setShowNoteNames', () => {
+  it('updates settings.showNoteNames', () => {
+    const next = reducer(baseState(), { type: 'setShowNoteNames', value: true });
+    expect(next.settings.showNoteNames).toBe(true);
+  });
+});
+
+describe('reducer — setAutoOrderSetlists', () => {
+  it('updates settings.autoOrderSetlists', () => {
+    const next = reducer(baseState(), { type: 'setAutoOrderSetlists', value: false });
+    expect(next.settings.autoOrderSetlists).toBe(false);
+  });
+});
+
 describe('reducer — createSetlist', () => {
   it('adds a new named setlist and appends it to setlistOrder', () => {
     const next = reducer(baseState(), {
@@ -140,6 +163,47 @@ describe('reducer — createSetlist', () => {
     });
     const next = reducer(state, { type: 'createSetlist', id: 'sl2', name: 'Second', songIds: [] });
     expect(next.setlistOrder).toEqual(['sl1', 'sl2']);
+  });
+
+  it('becomes the active setlist when none was active yet', () => {
+    const next = reducer(baseState({ activeSetlistId: null }), {
+      type: 'createSetlist',
+      id: 'sl1',
+      name: 'Sunday AM',
+      songIds: [],
+    });
+    expect(next.activeSetlistId).toBe('sl1');
+  });
+
+  it('does not steal the active slot from an already-active setlist', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'First', songIds: [] } },
+      setlistOrder: ['sl1'],
+      activeSetlistId: 'sl1',
+    });
+    const next = reducer(state, { type: 'createSetlist', id: 'sl2', name: 'Second', songIds: [] });
+    expect(next.activeSetlistId).toBe('sl1');
+  });
+
+  it('sets activeSongId to the first song when it becomes the active setlist', () => {
+    const next = reducer(baseState({ activeSetlistId: null }), {
+      type: 'createSetlist',
+      id: 'sl1',
+      name: 'Sunday AM',
+      songIds: ['s1', 's2'],
+    });
+    expect(next.activeSongId).toBe('s1');
+  });
+
+  it('leaves activeSongId untouched when it does not become the active setlist', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'First', songIds: ['s1'] } },
+      setlistOrder: ['sl1'],
+      activeSetlistId: 'sl1',
+      activeSongId: 's1',
+    });
+    const next = reducer(state, { type: 'createSetlist', id: 'sl2', name: 'Second', songIds: ['s2'] });
+    expect(next.activeSongId).toBe('s1');
   });
 });
 
@@ -161,6 +225,28 @@ describe('reducer — updateSetlist', () => {
     const state = baseState();
     const next = reducer(state, { type: 'updateSetlist', id: 'missing', patch: { name: 'X' } });
     expect(next).toBe(state);
+  });
+
+  it('clamps activeSongId to the new first song when it drops out of the active setlist', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1', 's2'] } },
+      setlistOrder: ['sl1'],
+      activeSetlistId: 'sl1',
+      activeSongId: 's1',
+    });
+    const next = reducer(state, { type: 'updateSetlist', id: 'sl1', patch: { songIds: ['s2', 's3'] } });
+    expect(next.activeSongId).toBe('s2');
+  });
+
+  it('leaves activeSongId untouched when editing a setlist that is not active', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] } },
+      setlistOrder: ['sl1'],
+      activeSetlistId: null,
+      activeSongId: 's9',
+    });
+    const next = reducer(state, { type: 'updateSetlist', id: 'sl1', patch: { songIds: ['s2'] } });
+    expect(next.activeSongId).toBe('s9');
   });
 });
 
@@ -186,5 +272,104 @@ describe('reducer — deleteSetlist', () => {
     const next = reducer(state, { type: 'deleteSetlist', id: 'missing' });
     expect(next.setlists).toEqual(state.setlists);
     expect(next.setlistOrder).toEqual(state.setlistOrder);
+  });
+
+  it('reassigns the active setlist to the next remaining one when the active setlist is deleted', () => {
+    const state = baseState({
+      setlists: {
+        sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] },
+        sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2'] },
+      },
+      setlistOrder: ['sl1', 'sl2'],
+      activeSetlistId: 'sl1',
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'sl1' });
+    expect(next.activeSetlistId).toBe('sl2');
+  });
+
+  it('clears the active setlist when it was the last one', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] } },
+      setlistOrder: ['sl1'],
+      activeSetlistId: 'sl1',
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'sl1' });
+    expect(next.activeSetlistId).toBeNull();
+  });
+
+  it('leaves the active setlist untouched when a different setlist is deleted', () => {
+    const state = baseState({
+      setlists: {
+        sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] },
+        sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2'] },
+      },
+      setlistOrder: ['sl1', 'sl2'],
+      activeSetlistId: 'sl2',
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'sl1' });
+    expect(next.activeSetlistId).toBe('sl2');
+  });
+
+  it('resets activeSongId to the reassigned setlist\'s first song when the active setlist is deleted', () => {
+    const state = baseState({
+      setlists: {
+        sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] },
+        sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2'] },
+      },
+      setlistOrder: ['sl1', 'sl2'],
+      activeSetlistId: 'sl1',
+      activeSongId: 's1',
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'sl1' });
+    expect(next.activeSongId).toBe('s2');
+  });
+
+  it('clears activeSongId when the deleted active setlist was the last one', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] } },
+      setlistOrder: ['sl1'],
+      activeSetlistId: 'sl1',
+      activeSongId: 's1',
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'sl1' });
+    expect(next.activeSongId).toBeNull();
+  });
+});
+
+describe('reducer — setActiveSetlist', () => {
+  it('updates activeSetlistId', () => {
+    const state = baseState({
+      setlists: { sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2'] } },
+      setlistOrder: ['sl2'],
+    });
+    const next = reducer(state, { type: 'setActiveSetlist', id: 'sl2' });
+    expect(next.activeSetlistId).toBe('sl2');
+  });
+
+  it('sets activeSongId to the new setlist\'s first song', () => {
+    const state = baseState({
+      setlists: { sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2', 's3'] } },
+      setlistOrder: ['sl2'],
+    });
+    const next = reducer(state, { type: 'setActiveSetlist', id: 'sl2' });
+    expect(next.activeSongId).toBe('s2');
+  });
+
+  it('accepts null to clear the active setlist and activeSongId', () => {
+    const next = reducer(baseState({ activeSetlistId: 'sl1', activeSongId: 's1' }), {
+      type: 'setActiveSetlist',
+      id: null,
+    });
+    expect(next.activeSetlistId).toBeNull();
+    expect(next.activeSongId).toBeNull();
+  });
+});
+
+describe('reducer — setActiveSongId', () => {
+  it('updates activeSongId without touching activeSetlistId', () => {
+    const state = baseState({ activeSetlistId: 'sl1', activeSongId: 's1' });
+    const next = reducer(state, { type: 'setActiveSongId', id: 's2' });
+    expect(next.activeSongId).toBe('s2');
+    expect(next.activeSetlistId).toBe('sl1');
   });
 });

@@ -2,7 +2,7 @@
 // icon set, per the Classical readme) so the app matches the spec pixel for
 // pixel rather than substituting a different icon library's glyphs.
 import React from 'react';
-import Svg, { Circle, Line, Path, Polyline } from 'react-native-svg';
+import Svg, { Circle, Line, Path, Polygon, Polyline } from 'react-native-svg';
 
 interface IconProps {
   size?: number;
@@ -98,6 +98,14 @@ export function ChevronLeftIcon({ size = 16, color = '#000', strokeWidth = 2 }: 
   return (
     <Svg {...base(size, strokeWidth, color)}>
       <Path d="M15 18l-6-6 6-6" />
+    </Svg>
+  );
+}
+
+export function ChevronRightIcon({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="M9 18l6-6-6-6" />
     </Svg>
   );
 }
@@ -234,6 +242,41 @@ export function ChevronDownIcon({ size = 14, color = '#000', strokeWidth = 2 }: 
   return (
     <Svg {...base(size, strokeWidth, color)}>
       <Path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+// Icon path lifted verbatim from StageChart - Control Room.dc.html (design spec).
+export function FocusModeIcon({ size = 16, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <Path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <Path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <Path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+    </Svg>
+  );
+}
+
+// Icon path lifted verbatim from StageChart - Setlist Builder.dc.html (design spec).
+// Lucide "layers" glyph -- used for the MusicXML instrument-visibility filter
+// toggle (stacked parts, one per instrument track).
+export function InstrumentsIcon({ size = 15, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <Polyline points="2 17 12 22 22 17" />
+      <Polyline points="2 12 12 17 22 12" />
+    </Svg>
+  );
+}
+
+export function AlertTriangleIcon({ size = 12, color = '#000', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth, color)}>
+      <Path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <Line x1="12" y1="9" x2="12" y2="13" />
+      <Line x1="12" y1="17" x2="12.01" y2="17" />
     </Svg>
   );
 }

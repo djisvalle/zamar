@@ -26,7 +26,6 @@ function seed(
     capo: 0,
     clef: 'treble',
     sheetMode: 'musicxml',
-    autoScroll: false,
     ...opts,
   };
 }
@@ -36,7 +35,6 @@ export const LIBRARY_SEED: Song[] = [
   seed('amazing-grace', 'Amazing Grace', 'Traditional', 'G', {
     tempo: 72,
     chart: AMAZING_GRACE_CHART,
-    capo: 3, // matches the spec's opening Settings state exactly
     favorite: true,
   }),
   seed('this-is-amazing-grace', 'This Is Amazing Grace', 'Phil Wickham', 'G', { tempo: 128 }),

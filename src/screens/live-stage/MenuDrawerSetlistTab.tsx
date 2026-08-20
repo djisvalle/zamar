@@ -5,17 +5,16 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '../../theme/ThemeContext';
 import { useStore } from '../../data/store';
 import { noteName } from '../../music/notes';
-import { EditIcon, GripIcon, PlusIcon, TrashIcon } from '../../ui/icons';
+import { EditIcon, PlusIcon, TrashIcon } from '../../ui/icons';
 import { SetlistBuildView } from './SetlistBuildView';
 
 interface MenuDrawerSetlistTabProps {
-  onNavigateSong: (id: string) => void;
+  onOpenSetlistDetails: (id: string) => void;
 }
 
-export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabProps) {
+export function MenuDrawerSetlistTab({ onOpenSetlistDetails }: MenuDrawerSetlistTabProps) {
   const { colors } = useTheme();
   const { setlists, songs, settings, deleteSetlist } = useStore();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [buildTarget, setBuildTarget] = useState<'new' | string | null>(null);
 
   if (buildTarget !== null) {
@@ -36,12 +35,11 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
             .map((id) => songs[id])
             .filter((s): s is NonNullable<typeof s> => Boolean(s));
           const keyMap = setlistSongs.map((s) => noteName(s.keyIdx, settings.enharmonic)).join(' → ') || '—';
-          const expanded = expandedId === setlist.id;
           return (
             <View key={setlist.id} className="gap-1.5 rounded-md border border-border p-3">
               <Pressable
                 className="flex-row items-center justify-between gap-2"
-                onPress={() => setExpandedId(expanded ? null : setlist.id)}
+                onPress={() => onOpenSetlistDetails(setlist.id)}
               >
                 <View className="min-w-0 flex-1">
                   <Text className="text-[14px] font-semibold text-foreground" numberOfLines={1}>
@@ -68,40 +66,12 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
                     className="h-7 w-7"
                     hitSlop={6}
                     accessibilityLabel={`Delete ${setlist.name}`}
-                    onPress={() => {
-                      if (expandedId === setlist.id) setExpandedId(null);
-                      deleteSetlist(setlist.id);
-                    }}
+                    onPress={() => deleteSetlist(setlist.id)}
                   >
                     <TrashIcon size={13} color={colors.text} />
                   </Button>
                 </View>
               </Pressable>
-
-              {expanded && (
-                <View className="gap-1.5 pt-1.5">
-                  {setlistSongs.map((song) => (
-                    <Pressable
-                      key={song.id}
-                      className="flex-row items-center gap-2 rounded-md border border-border px-2 py-1.5"
-                      onPress={() => onNavigateSong(song.id)}
-                    >
-                      <GripIcon size={13} color={colors.text} />
-                      <View className="min-w-0 flex-1">
-                        <Text className="text-[13px] font-medium text-foreground" numberOfLines={1}>
-                          {song.title}
-                        </Text>
-                        <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                          Key of {noteName(song.keyIdx, settings.enharmonic)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                  {setlistSongs.length === 0 && (
-                    <Text className="text-[12px] text-muted-foreground">No songs in this setlist yet.</Text>
-                  )}
-                </View>
-              )}
             </View>
           );
         })}

@@ -32,6 +32,30 @@
   // OSMD instance; only the newest generation is allowed to touch the DOM.
   var renderGeneration = 0;
 
+  function instrumentIdOf(inst) {
+    return inst.IdString || String(inst.Id);
+  }
+
+  // visibleIds === null/undefined means "everything visible" -- the state
+  // before RN has ever learned the part list, and the default OSMD itself
+  // starts in.
+  function applyVisibility(visibleIds) {
+    if (!osmd || !osmd.Sheet) return;
+    osmd.Sheet.Instruments.forEach(function (inst) {
+      inst.Visible = !visibleIds || visibleIds.indexOf(instrumentIdOf(inst)) !== -1;
+    });
+  }
+
+  function postInstruments() {
+    if (!osmd || !osmd.Sheet) return;
+    post({
+      type: 'instruments',
+      list: osmd.Sheet.Instruments.map(function (inst) {
+        return { id: instrumentIdOf(inst), name: inst.Name || null };
+      }),
+    });
+  }
+
   async function render(msg) {
     var myGeneration = ++renderGeneration;
     try {
@@ -50,6 +74,7 @@
         transposeSemi: msg.transposeSemi,
         enharmonic: msg.enharmonic,
         clef: msg.clef,
+        showNoteNames: msg.showNoteNames,
       });
 
       if (!osmd) {
@@ -60,11 +85,27 @@
       }
       await osmd.load(transformed);
       if (myGeneration !== renderGeneration) return;
+      // Reapply the caller's current filter immediately -- a transpose/clef
+      // change reparses the whole score, and without this every such change
+      // would flash back to "all instruments visible".
+      applyVisibility(msg.visibleIds);
+      // updateGraphic() re-derives the graphical staves from Instrument.Visible;
+      // a plain render() redraws the already-built graphic sheet and wouldn't
+      // add/remove staves on its own (mirrors Instrument.Transpose's contract).
+      osmd.updateGraphic();
       osmd.render();
+      postInstruments();
     } catch (err) {
       if (myGeneration !== renderGeneration) return;
       post({ type: 'error', message: (err && err.message) || String(err) });
     }
+  }
+
+  function setVisibility(msg) {
+    if (!osmd) return;
+    applyVisibility(msg.visibleIds);
+    osmd.updateGraphic();
+    osmd.render();
   }
 
   function onMessage(event) {
@@ -75,6 +116,7 @@
       return;
     }
     if (msg.type === 'render') render(msg);
+    else if (msg.type === 'setVisibility') setVisibility(msg);
   }
 
   document.addEventListener('message', onMessage);

@@ -35,7 +35,6 @@ export interface Song {
   capo: number;
   clef: Clef;
   sheetMode: SheetMode;
-  autoScroll: boolean;
 }
 
 export type NewSongInput = Pick<
