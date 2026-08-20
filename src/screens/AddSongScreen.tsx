@@ -159,8 +159,18 @@ export function AddSongScreen({ route, navigation }: Props) {
                   // until a save happens, so it must not be deleted here.
                   if (sheetFileUri !== originalSheetFileUri) discardCopiedSheetFile(sheetFileUri);
                   setSource(s.value);
-                  setSheetFileUri(null);
-                  setSheetFileName(null);
+                  if (isEdit && existing && s.value === existing.source) {
+                    // Returning to the tab that matches the song's actual
+                    // saved source — repopulate from the original file
+                    // rather than nulling it out, so the user isn't locked
+                    // out of saving just for navigating back to where they
+                    // started.
+                    setSheetFileUri(originalSheetFileUri);
+                    setSheetFileName(existing.sheetFileName);
+                  } else {
+                    setSheetFileUri(null);
+                    setSheetFileName(null);
+                  }
                   setPickError(null);
                 }}
                 style={{ flex: 1, paddingVertical: 5, gap: 5 }}
