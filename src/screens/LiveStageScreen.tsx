@@ -12,7 +12,7 @@ import { EditIcon, MenuIcon, SettingsIcon } from '../ui/icons';
 import { ChordGrid } from './live-stage/ChordGrid';
 import { SheetView } from './live-stage/SheetView';
 import { SettingsSheet } from './live-stage/SettingsSheet';
-import { SetlistDrawer } from './live-stage/SetlistDrawer';
+import { MenuDrawer } from './live-stage/MenuDrawer';
 import { QuickToolsFab } from './live-stage/QuickToolsFab';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LiveStage'>;
@@ -26,7 +26,7 @@ export function LiveStageScreen({ route, navigation }: Props) {
   const [view, setView] = useState<'chord' | 'sheet'>('chord');
   const [editMode, setEditMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [setlistOpen, setSetlistOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
 
   if (!song) {
@@ -60,7 +60,7 @@ export function LiveStageScreen({ route, navigation }: Props) {
           backgroundColor: colors.surface,
         }}
       >
-        <Button variant="secondary" icon size={36} accessibilityLabel="Menu" onPress={() => setSetlistOpen(true)}>
+        <Button variant="secondary" icon size={36} accessibilityLabel="Menu" onPress={() => setMenuOpen(true)}>
           <MenuIcon size={16} color={colors.text} />
         </Button>
         <Text
@@ -126,17 +126,21 @@ export function LiveStageScreen({ route, navigation }: Props) {
         onSetEnharmonic={store.setEnharmonic}
       />
 
-      <SetlistDrawer
-        visible={setlistOpen}
-        onClose={() => setSetlistOpen(false)}
-        songs={store.setlist}
-        onPressSong={(id) => {
-          setSetlistOpen(false);
+      <MenuDrawer
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        song={song}
+        onNavigateSong={(id) => {
+          setMenuOpen(false);
           navigation.push('LiveStage', { songId: id });
         }}
-        onAddSong={() => {
-          setSetlistOpen(false);
-          navigation.navigate('AddSong', { addToSetlist: true });
+        onCreateSong={() => {
+          setMenuOpen(false);
+          navigation.navigate('AddSong', { mode: 'create' });
+        }}
+        onEditSong={(id) => {
+          setMenuOpen(false);
+          navigation.navigate('AddSong', { mode: 'edit', songId: id });
         }}
       />
     </SafeAreaView>
