@@ -1,0 +1,96 @@
+import React, { useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { useTheme } from '../../theme/ThemeContext';
+import { useStore } from '../../data/store';
+import { noteName } from '../../music/notes';
+import { EditIcon, GripIcon, PlusIcon } from '../../ui/icons';
+import { SetlistBuildView } from './SetlistBuildView';
+
+interface MenuDrawerSetlistTabProps {
+  onNavigateSong: (id: string) => void;
+}
+
+export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabProps) {
+  const { colors } = useTheme();
+  const { setlists, songs } = useStore();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [buildTarget, setBuildTarget] = useState<'new' | string | null>(null);
+
+  if (buildTarget !== null) {
+    return <SetlistBuildView setlistId={buildTarget === 'new' ? null : buildTarget} onDone={() => setBuildTarget(null)} />;
+  }
+
+  return (
+    <ScrollView contentContainerClassName="gap-3 p-3" showsVerticalScrollIndicator={false}>
+      <Text className="text-[14px] font-semibold text-foreground">Setlists</Text>
+
+      <View className="gap-2">
+        {setlists.map((setlist) => {
+          const setlistSongs = setlist.songIds
+            .map((id) => songs[id])
+            .filter((s): s is NonNullable<typeof s> => Boolean(s));
+          const keyMap = setlistSongs.map((s) => noteName(s.keyIdx, 'sharp')).join(' → ') || '—';
+          const expanded = expandedId === setlist.id;
+          return (
+            <View key={setlist.id} className="gap-1.5 rounded-md border border-border p-3">
+              <Pressable
+                className="flex-row items-center justify-between gap-2"
+                onPress={() => setExpandedId(expanded ? null : setlist.id)}
+              >
+                <View className="min-w-0 flex-1">
+                  <Text className="text-[14px] font-semibold text-foreground" numberOfLines={1}>
+                    {setlist.name}
+                  </Text>
+                  <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
+                    {setlistSongs.length} songs · {keyMap}
+                  </Text>
+                </View>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  accessibilityLabel={`Edit ${setlist.name}`}
+                  onPress={() => setBuildTarget(setlist.id)}
+                >
+                  <EditIcon size={13} color={colors.text} />
+                </Button>
+              </Pressable>
+
+              {expanded && (
+                <View className="gap-1.5 pt-1.5">
+                  {setlistSongs.map((song) => (
+                    <Pressable
+                      key={song.id}
+                      className="flex-row items-center gap-2 rounded-md border border-border px-2 py-1.5"
+                      onPress={() => onNavigateSong(song.id)}
+                    >
+                      <GripIcon size={13} color={colors.text} />
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-[13px] font-medium text-foreground" numberOfLines={1}>
+                          {song.title}
+                        </Text>
+                        <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
+                          Key of {noteName(song.keyIdx, 'sharp')}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                  {setlistSongs.length === 0 && (
+                    <Text className="text-[12px] text-muted-foreground">No songs in this setlist yet.</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      <Button variant="secondary" onPress={() => setBuildTarget('new')} className="flex-row gap-1.5">
+        <PlusIcon size={14} color={colors.text} />
+        <Text className="text-[13px] font-medium">Create a new Setlist</Text>
+      </Button>
+    </ScrollView>
+  );
+}
