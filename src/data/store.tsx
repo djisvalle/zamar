@@ -25,7 +25,8 @@ type Action =
   | { type: 'setEnharmonic'; enharmonic: Enharmonic }
   | { type: 'setLibrarySort'; value: LibrarySort }
   | { type: 'createSetlist'; id: string; name: string; songIds: string[] }
-  | { type: 'updateSetlist'; id: string; patch: Partial<Pick<Setlist, 'name' | 'songIds'>> };
+  | { type: 'updateSetlist'; id: string; patch: Partial<Pick<Setlist, 'name' | 'songIds'>> }
+  | { type: 'deleteSetlist'; id: string };
 
 function slugify(title: string) {
   const base = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'item';
@@ -81,6 +82,14 @@ export function reducer(state: State, action: Action): State {
       if (!setlist) return state;
       return { ...state, setlists: { ...state.setlists, [action.id]: { ...setlist, ...action.patch } } };
     }
+    case 'deleteSetlist': {
+      const { [action.id]: _removed, ...remainingSetlists } = state.setlists;
+      return {
+        ...state,
+        setlists: remainingSetlists,
+        setlistOrder: state.setlistOrder.filter((id) => id !== action.id),
+      };
+    }
     default:
       return state;
   }
@@ -115,6 +124,7 @@ interface StoreValue {
   setLibrarySort: (v: LibrarySort) => void;
   createSetlist: (name: string, songIds: string[]) => string;
   updateSetlist: (id: string, patch: Partial<Pick<Setlist, 'name' | 'songIds'>>) => void;
+  deleteSetlist: (id: string) => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -149,6 +159,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const deleteSetlist = useCallback((id: string) => {
+    dispatch({ type: 'deleteSetlist', id });
+  }, []);
+
   const library = useMemo(() => Object.values(state.songs), [state.songs]);
   const setlists = useMemo(
     () => state.setlistOrder.map((id) => state.setlists[id]).filter((s): s is Setlist => Boolean(s)),
@@ -167,6 +181,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setLibrarySort,
     createSetlist,
     updateSetlist,
+    deleteSetlist,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

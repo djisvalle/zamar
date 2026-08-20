@@ -163,3 +163,28 @@ describe('reducer — updateSetlist', () => {
     expect(next).toBe(state);
   });
 });
+
+describe('reducer — deleteSetlist', () => {
+  it('removes the setlist from both setlists and setlistOrder, leaving other setlists untouched', () => {
+    const state = baseState({
+      setlists: {
+        sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] },
+        sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2'] },
+      },
+      setlistOrder: ['sl1', 'sl2'],
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'sl1' });
+    expect(next.setlists).toEqual({ sl2: { id: 'sl2', name: 'Sunday PM', songIds: ['s2'] } });
+    expect(next.setlistOrder).toEqual(['sl2']);
+  });
+
+  it('is a safe no-op when the setlist does not exist', () => {
+    const state = baseState({
+      setlists: { sl1: { id: 'sl1', name: 'Sunday AM', songIds: ['s1'] } },
+      setlistOrder: ['sl1'],
+    });
+    const next = reducer(state, { type: 'deleteSetlist', id: 'missing' });
+    expect(next.setlists).toEqual(state.setlists);
+    expect(next.setlistOrder).toEqual(state.setlistOrder);
+  });
+});

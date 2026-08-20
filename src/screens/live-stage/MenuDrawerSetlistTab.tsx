@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '../../theme/ThemeContext';
 import { useStore } from '../../data/store';
 import { noteName } from '../../music/notes';
-import { EditIcon, GripIcon, PlusIcon } from '../../ui/icons';
+import { EditIcon, GripIcon, PlusIcon, TrashIcon } from '../../ui/icons';
 import { SetlistBuildView } from './SetlistBuildView';
 
 interface MenuDrawerSetlistTabProps {
@@ -14,7 +14,7 @@ interface MenuDrawerSetlistTabProps {
 
 export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabProps) {
   const { colors } = useTheme();
-  const { setlists, songs } = useStore();
+  const { setlists, songs, deleteSetlist } = useStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [buildTarget, setBuildTarget] = useState<'new' | string | null>(null);
 
@@ -47,15 +47,29 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
                     {setlistSongs.length} songs · {keyMap}
                   </Text>
                 </View>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  accessibilityLabel={`Edit ${setlist.name}`}
-                  onPress={() => setBuildTarget(setlist.id)}
-                >
-                  <EditIcon size={13} color={colors.text} />
-                </Button>
+                <View className="flex-row items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    accessibilityLabel={`Edit ${setlist.name}`}
+                    onPress={() => setBuildTarget(setlist.id)}
+                  >
+                    <EditIcon size={13} color={colors.text} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    accessibilityLabel={`Delete ${setlist.name}`}
+                    onPress={() => {
+                      if (expandedId === setlist.id) setExpandedId(null);
+                      deleteSetlist(setlist.id);
+                    }}
+                  >
+                    <TrashIcon size={13} color={colors.text} />
+                  </Button>
+                </View>
               </Pressable>
 
               {expanded && (
