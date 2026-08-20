@@ -23,7 +23,11 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
   }
 
   return (
-    <ScrollView contentContainerClassName="gap-3 p-3" showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerClassName="gap-3 p-3"
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text className="text-[14px] font-semibold text-foreground">Setlists</Text>
 
       <View className="gap-2">
@@ -52,6 +56,7 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
+                    hitSlop={6}
                     accessibilityLabel={`Edit ${setlist.name}`}
                     onPress={() => setBuildTarget(setlist.id)}
                   >
@@ -61,6 +66,7 @@ export function MenuDrawerSetlistTab({ onNavigateSong }: MenuDrawerSetlistTabPro
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
+                    hitSlop={6}
                     accessibilityLabel={`Delete ${setlist.name}`}
                     onPress={() => {
                       if (expandedId === setlist.id) setExpandedId(null);

@@ -54,7 +54,11 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
   }
 
   return (
-    <ScrollView contentContainerClassName="gap-3 p-3" showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerClassName="gap-3 p-3"
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <Button variant="ghost" size="sm" onPress={onDone} className="flex-row gap-1 self-start px-2">
         <ChevronLeftIcon size={13} color={colors.accent} />
         <Text className="text-[12px] font-medium text-primary">Back</Text>
@@ -87,6 +91,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
                 variant="ghost"
                 size="icon"
                 className="h-4 w-5"
+                hitSlop={10}
                 disabled={i === 0}
                 accessibilityLabel="Move up"
                 onPress={() => moveDraft(i, -1)}
@@ -97,6 +102,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
                 variant="ghost"
                 size="icon"
                 className="h-4 w-5"
+                hitSlop={10}
                 disabled={i === draftSongs.length - 1}
                 accessibilityLabel="Move down"
                 onPress={() => moveDraft(i, 1)}
@@ -108,6 +114,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
               variant="ghost"
               size="icon"
               className="h-6 w-6"
+              hitSlop={8}
               accessibilityLabel="Remove from setlist"
               onPress={() => setDraftIds((ids) => ids.filter((x) => x !== song.id))}
             >
@@ -150,6 +157,7 @@ export function SetlistBuildView({ setlistId, onDone }: SetlistBuildViewProps) {
               variant="secondary"
               size="icon"
               className="h-7 w-7"
+              hitSlop={6}
               accessibilityLabel={`Add ${song.title} to setlist`}
               onPress={() => setDraftIds((ids) => [...ids, song.id])}
             >

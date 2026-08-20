@@ -35,7 +35,14 @@ export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSon
             <View className="w-24 gap-3.5 border-r border-border px-1.5 py-2.5">
               <View className="flex-row items-center justify-between px-1">
                 <Text className="text-[14px] font-semibold text-foreground">Menu</Text>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onPress={onClose} accessibilityLabel="Close">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  hitSlop={8}
+                  onPress={onClose}
+                  accessibilityLabel="Close"
+                >
                   <XIcon size={11} color={colors.text} />
                 </Button>
               </View>

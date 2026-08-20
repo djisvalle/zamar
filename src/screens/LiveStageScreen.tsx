@@ -132,7 +132,7 @@ export function LiveStageScreen({ route, navigation }: Props) {
         song={song}
         onNavigateSong={(id) => {
           setMenuOpen(false);
-          navigation.push('LiveStage', { songId: id });
+          navigation.replace('LiveStage', { songId: id });
         }}
         onCreateSong={() => {
           setMenuOpen(false);

@@ -41,6 +41,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
           variant="secondary"
           size="icon"
           className="h-7 w-7"
+          hitSlop={6}
           onPress={onCreateSong}
           accessibilityLabel="Create a new song"
         >
@@ -48,7 +49,11 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
         </Button>
       </View>
 
-      <ScrollView contentContainerClassName="gap-1 px-2.5 py-1.5" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerClassName="gap-1 px-2.5 py-1.5"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {items.map((item, i) =>
           item.type === 'divider' ? (
             <View key={`d-${i}`} className="flex-row items-center gap-1.5 pb-0 pt-1.5">
@@ -69,6 +74,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                hitSlop={6}
                 accessibilityLabel={item.song.favorite ? 'Remove from favorites' : 'Add to favorites'}
                 onPress={() => updateSong(item.song.id, { favorite: !item.song.favorite })}
               >
@@ -78,6 +84,7 @@ export function MenuDrawerLibraryTab({ onNavigateSong, onCreateSong, onEditSong 
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                hitSlop={6}
                 accessibilityLabel="Edit song"
                 onPress={() => onEditSong(item.song.id)}
               >
