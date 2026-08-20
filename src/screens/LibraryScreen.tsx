@@ -4,25 +4,23 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { fontHeading } from '../theme/tokens';
 import { useStore } from '../data/store';
-import { Song } from '../data/types';
+import { groupLibrary } from '../data/librarySort';
 import { noteName } from '../music/notes';
 import { RootStackParamList } from '../navigation/types';
 import { Button } from '../ui/Button';
 import { Card, CardMeta, CardTitle } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Segmented } from '../ui/Segmented';
-import { PlusIcon } from '../ui/icons';
+import { EditIcon, PlusIcon, StarIcon } from '../ui/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
-type Item = { type: 'divider'; label: string } | { type: 'song'; song: Song };
-
 export function LibraryScreen({ navigation }: Props) {
   const { colors } = useTheme();
-  const { library, settings, setLibraryGroupByKey } = useStore();
+  const { library, settings, setLibrarySort, updateSong } = useStore();
   const [search, setSearch] = useState('');
 
-  const items = useMemo<Item[]>(() => {
+  const items = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = q
       ? library.filter(
@@ -32,28 +30,8 @@ export function LibraryScreen({ navigation }: Props) {
             noteName(s.keyIdx, 'sharp').toLowerCase().includes(q),
         )
       : library;
-
-    const groupByKey = settings.libraryGroupByKey;
-    const sorted = [...filtered].sort((a, b) => {
-      if (groupByKey) {
-        const d = a.keyIdx - b.keyIdx;
-        return d !== 0 ? d : a.title.localeCompare(b.title);
-      }
-      return a.title.localeCompare(b.title);
-    });
-
-    const out: Item[] = [];
-    let lastGroup: string | null = null;
-    for (const song of sorted) {
-      const group = groupByKey ? `Key of ${noteName(song.keyIdx, 'sharp')}` : song.title[0]?.toUpperCase() ?? '#';
-      if (group !== lastGroup) {
-        out.push({ type: 'divider', label: group });
-        lastGroup = group;
-      }
-      out.push({ type: 'song', song });
-    }
-    return out;
-  }, [library, search, settings.libraryGroupByKey]);
+    return groupLibrary(filtered, settings.librarySort);
+  }, [library, search, settings.librarySort]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -75,11 +53,12 @@ export function LibraryScreen({ navigation }: Props) {
         <Input value={search} onChangeText={setSearch} placeholder="Search songs, artists, keys…" fontSize={13} />
         <Segmented
           fontSize={11}
-          value={settings.libraryGroupByKey ? 'key' : 'alpha'}
-          onChange={(v) => setLibraryGroupByKey(v === 'key')}
+          value={settings.librarySort}
+          onChange={setLibrarySort}
           options={[
-            { value: 'alpha', label: 'A–Z' },
+            { value: 'letter', label: 'A–Z' },
             { value: 'key', label: 'By Key' },
+            { value: 'artist', label: 'By Artist' },
           ]}
         />
       </View>
@@ -94,16 +73,35 @@ export function LibraryScreen({ navigation }: Props) {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.divider }} />
             </View>
           ) : (
-            <Pressable key={item.song.id} onPress={() => navigation.navigate('LiveStage', { songId: item.song.id })}>
-              <Card row>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <CardTitle>{item.song.title}</CardTitle>
-                  <CardMeta>
-                    {item.song.artist} · {noteName(item.song.keyIdx, 'sharp')}
-                  </CardMeta>
-                </View>
-              </Card>
-            </Pressable>
+            <Card key={item.song.id} row>
+              <Pressable
+                style={{ flex: 1, minWidth: 0 }}
+                onPress={() => navigation.navigate('LiveStage', { songId: item.song.id })}
+              >
+                <CardTitle>{item.song.title}</CardTitle>
+                <CardMeta>
+                  {item.song.artist} · {noteName(item.song.keyIdx, 'sharp')}
+                </CardMeta>
+              </Pressable>
+              <Button
+                variant="ghost"
+                icon
+                size={30}
+                accessibilityLabel={item.song.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                onPress={() => updateSong(item.song.id, { favorite: !item.song.favorite })}
+              >
+                <StarIcon size={15} color={colors.accent} filled={item.song.favorite} />
+              </Button>
+              <Button
+                variant="ghost"
+                icon
+                size={30}
+                accessibilityLabel="Edit song"
+                onPress={() => navigation.navigate('AddSong', { mode: 'edit', songId: item.song.id })}
+              >
+                <EditIcon size={14} color={colors.text} />
+              </Button>
+            </Card>
           ),
         )}
       </ScrollView>
@@ -114,7 +112,7 @@ export function LibraryScreen({ navigation }: Props) {
           icon
           size={48}
           accessibilityLabel="Add song"
-          onPress={() => navigation.navigate('AddSong', { addToSetlist: false })}
+          onPress={() => navigation.navigate('AddSong', { mode: 'create' })}
           style={{ borderRadius: 24, backgroundColor: colors.surface }}
         >
           <PlusIcon size={20} color={colors.accent} />
