@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -35,6 +35,8 @@ export function MusicToolsPanel({
   onSetShowNoteNames,
 }: MusicToolsPanelProps) {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const currentIdx = ((song.keyIdx + song.transposeSemi) % 12 + 12) % 12;
 
   return (
@@ -59,7 +61,9 @@ export function MusicToolsPanel({
 
       {open && (
         <View
-          className="absolute bottom-[104px] right-3.5 z-20 h-1/2 w-1/2 min-w-[240px] max-w-[360px] overflow-hidden rounded-lg border border-border bg-card"
+          className={`absolute bottom-[104px] right-3.5 z-20 overflow-hidden rounded-lg border border-border bg-card ${
+            isTablet ? 'h-auto max-h-[78%] w-[360px]' : 'h-[58%] w-[88%] min-w-[280px]'
+          }`}
           style={{ shadowColor: '#2d2b2b', shadowOpacity: 0.22, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 12 }}
         >
           <View className="flex-row items-center justify-between p-6 pb-0">

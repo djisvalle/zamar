@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, SafeAreaView, StatusBar, View } from 'react-native';
+import { Pressable, SafeAreaView, StatusBar, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'LiveStage'>;
 // pre-loading a song.
 export function LiveStageScreen({ route, navigation }: Props) {
   const songId = route.params?.songId;
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const { colors } = useTheme();
   const store = useStore();
   const song = songId ? store.songs[songId] : undefined;
@@ -83,8 +85,9 @@ export function LiveStageScreen({ route, navigation }: Props) {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 8,
-          height: 44,
-          paddingHorizontal: 8,
+          minHeight: isTablet ? 54 : 48,
+          paddingHorizontal: isTablet ? 18 : 10,
+          paddingVertical: 4,
           borderBottomWidth: 1,
           borderBottomColor: colors.divider,
           backgroundColor: colors.surface,
@@ -123,8 +126,9 @@ export function LiveStageScreen({ route, navigation }: Props) {
               alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: 10,
-              paddingHorizontal: 20,
-              paddingTop: 14,
+              paddingHorizontal: isTablet ? 28 : 18,
+              paddingTop: isTablet ? 22 : 16,
+              paddingBottom: 4,
             }}
           >
             <View style={{ flex: 1, minWidth: 0 }}>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, View, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '../../theme/ThemeContext';
@@ -28,6 +28,8 @@ const TAB_LABEL: Record<RailTab, string> = {
 
 export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSong, onOpenSetlistDetails }: MenuDrawerProps) {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const [tab, setTab] = useState<RailTab | null>(null);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function MenuDrawer({ visible, onClose, song, onNavigateSong, onCreateSon
       <Pressable className="flex-1 flex-row bg-black/45" onPress={onClose}>
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="h-full w-[78%] overflow-hidden rounded-r-2xl bg-card"
+          className={`h-full overflow-hidden rounded-r-2xl bg-card ${isTablet ? 'w-[440px]' : 'w-[86%]'}`}
         >
           <SafeAreaView style={{ flex: 1 }}>
             <View className="flex-row items-center justify-between border-b border-border px-3 py-2.5">
